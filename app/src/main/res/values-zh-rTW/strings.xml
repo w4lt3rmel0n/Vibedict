@@ -1,0 +1,134 @@
+<resources>
+    <string name="app_name">Vibedict</string>
+
+    <string name="back">返回</string>
+    <string name="save">儲存</string>
+    <string name="delete">刪除</string>
+    <string name="cancel">取消</string>
+    <string name="options">選項</string>
+    <string name="edit">編輯</string>
+    <string name="upload">上傳</string>
+    <string name="view">檢視</string>
+    <string name="close">關閉</string>
+    <string name="loading">載入中...</string>
+    <string name="search">搜尋</string>
+
+    <string name="bookmarks">書籤</string>
+    <string name="settings">設定</string>
+    <string name="search_full_text">全文搜尋</string>
+    <string name="all_dictionaries">所有字典</string>
+
+    <string name="input_text_placeholder">輸入文字...</string>
+    <string name="go_back">返回</string>
+    <string name="history">歷史記錄</string>
+    <string name="clear_all">清除全部</string>
+    <string name="no_history">暫無搜尋記錄。</string>
+    <string name="no_def_found_collection">在選定的集合中未找到定義。</string>
+
+    <string name="no_bookmarks">您還沒有收藏任何單字。</string>
+    <string name="remove_bookmark">移除書籤</string>
+    <string name="add_bookmark">加入書籤</string>
+
+    <string name="no_definition_found">未找到定義</string>
+    <string name="new_search">新搜尋</string>
+    <string name="find_in_page">在頁面中尋找</string>
+
+    <string name="pref_interface">介面</string>
+    <string name="pref_dictionaries">字典</string>
+    <string name="pref_data">資料</string>
+
+    <string name="pref_language">語言</string>
+    <string name="pref_dark_mode">深色模式</string>
+    <string name="pref_material_colour">質感取色</string>
+    <string name="pref_material_subtitle">跟隨系統配色方案</string>
+    <string name="pref_instant_search">即時搜尋</string>
+    <string name="pref_instant_search_subtitle">進入應用程式時鍵盤自動彈出</string>
+    <string name="pref_text_size">文字大小</string>
+    <string name="pref_keep_screen_on">螢幕常亮</string>
+    <string name="pref_keep_screen_on_subtitle">應用程式開啟時保持螢幕常亮</string>
+
+    <string name="pref_manage_dicts">管理字典</string>
+    <string name="pref_manage_dicts_subtitle">新增或移除字典</string>
+    <string name="pref_manage_collections">管理集合</string>
+    <string name="pref_manage_collections_subtitle">將字典分組到集合中</string>
+    <string name="pref_llm_service">LLM 服務</string>
+    <string name="pref_llm_service_subtitle">設定 AI 提供者</string>
+    <string name="pref_app_info">應用程式資訊</string>
+
+    <string name="config_dictionaries">設定字典</string>
+    <string name="add_local_dict">新增本地字典</string>
+    <string name="add_web_engine">新增網路搜尋引擎</string>
+    <string name="add_ai_prompt">新增 AI 提示詞</string>
+    <string name="manage_folders">管理資料夾</string>
+    <string name="done_managing">完成管理</string>
+    <string name="linked_folders">已連結資料夾</string>
+    <string name="loaded_dictionaries">已載入字典</string>
+    <string name="no_dicts_found">未找到字典。</string>
+    <string name="add_folder_hint">新增包含 .mdx 檔案的資料夾。</string>
+
+    <string name="general">一般</string>
+    <string name="display_name">顯示名稱</string>
+    <string name="search_config">搜尋設定</string>
+    <string name="search_link">搜尋連結</string>
+    <string name="search_link_placeholder">使用 %s 作為關鍵字的預留位置</string>
+    <string name="delete_search_engine">刪除搜尋引擎</string>
+    <string name="ai_config">AI 提示詞設定</string>
+    <string name="prompt_template">提示詞範本</string>
+    <string name="render_html">將回應渲染為 HTML</string>
+    <string name="delete_ai_prompt">刪除 AI 提示詞</string>
+    <string name="file_info">檔案資訊</string>
+    <string name="mdx_file">MDX 檔案 (文字)</string>
+    <string name="mdd_file">MDD 檔案 (資源)</string>
+    <string name="configuration">設定</string>
+    <string name="force_original_style">強制原始樣式</string>
+    <string name="force_original_subtitle">停用深色模式自動反轉</string>
+    <string name="css_config">CSS 設定</string>
+    <string name="js_config">JavaScript 設定</string>
+    <string name="custom_fonts">自訂字型</string>
+    <string name="add_font">新增字型</string>
+
+    <string name="follow_system">跟隨系統</string>
+    <string name="lang_english">English</string>
+    <string name="lang_chinese_simp">简体中文</string>
+    <string name="lang_chinese_trad">正體中文</string>
+
+    <string name="light_mode">淺色</string>
+    <string name="dark_mode">深色</string>
+
+    <string name="find_in_page_hint">在頁面中尋找...</string>
+    <string name="previous">上一個</string>
+    <string name="next">下一個</string>
+    <string name="expand">展開</string>
+
+    <string name="loading_dictionaries">Loading dictionaries...</string>
+    <string name="no_folders_linked">No folders linked.</string>
+    <string name="invalid_path">Invalid Path</string>
+    <string name="remove">Remove</string>
+    <string name="status">Status</string>
+    <string name="unknown">Unknown</string>
+    <string name="select_provider">Select Provider</string>
+    <string name="llm_provider">LLM Provider</string>
+    <string name="no_providers_added">No providers added</string>
+    <string name="prompt_placeholder">Explain %s in simple terms</string>
+    <string name="not_found">Not found</string>
+    <string name="files_loaded">%d files loaded</string>
+    <string name="loaded">Loaded</string>
+    <string name="css_loaded">CSS Loaded</string>
+    <string name="no_css">No CSS</string>
+    <string name="view_file_css">View File CSS</string>
+    <string name="apply_file_css">Apply File CSS</string>
+    <string name="js_loaded">JavaScript Loaded</string>
+    <string name="no_js">No JavaScript</string>
+    <string name="view_file_js">View File JS</string>
+    <string name="apply_file_js">Apply File JS</string>
+    <string name="no_fonts_loaded">No fonts loaded</string>
+    <string name="fonts_loaded">%d fonts loaded</string>
+    <string name="rename">Rename</string>
+    <string name="unsaved_changes">Unsaved Changes</string>
+    <string name="unsaved_changes_message">Do you want to save your changes before exiting?</string>
+    <string name="dont_save">Don\'t Save</string>
+    <string name="rename_font">Rename Font</string>
+    <string name="rename_font_message">Enter a new name (alphanumeric only). This will change the CSS font-family.</string>
+    <string name="css_content">CSS Content</string>
+    <string name="js_content">JS Content</string>
+</resources>
