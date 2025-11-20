@@ -1,6 +1,6 @@
 <h1>Vibedict</h1>
 
-<div align="center"><a href="./README.md"><img src="./banner.svg" alt="Vibedict" style="width: 70%;"></a></div>
+<div align="center"><a href="./"><img src="./banner.svg" alt="Vibedict" style="width: 70%;"></a></div>
 
 ## Description
 
