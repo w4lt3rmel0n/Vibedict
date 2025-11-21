@@ -16,7 +16,7 @@ An Android dictionary application developed with the assistance of artificial in
 <li>Errors, crashes and any instability issues may be expected.</li>
 
 ## Notice
-<li>This app is still in the early stages, some funtion may not be implemented or work as intended.</li>
+<li>This app is still in the early stages, some funtion may not be implemented or working as intended.</li>
 <li>This app is largely built with the help of artificial intelligence.</li>
 
 ##
