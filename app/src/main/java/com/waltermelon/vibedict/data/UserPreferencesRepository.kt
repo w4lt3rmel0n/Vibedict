@@ -66,6 +66,8 @@ class UserPreferencesRepository(private val context: Context) {
         val KEEP_SCREEN_ON = booleanPreferencesKey("keep_screen_on")
         val DEFAULT_FOLDER = stringPreferencesKey("default_folder_path")
         val INSTANT_SEARCH = booleanPreferencesKey("instant_search")
+        val IS_FULL_TEXT = booleanPreferencesKey("is_full_text")
+        val IS_REGEX_ENABLED = booleanPreferencesKey("is_regex_enabled")
         val DICTIONARY_DIRS = stringSetPreferencesKey("dictionary_directories")
         val BOOKMARKS = stringSetPreferencesKey("bookmarks")
         val HISTORY = stringPreferencesKey("search_history")
@@ -90,6 +92,8 @@ class UserPreferencesRepository(private val context: Context) {
     val keepScreenOn: Flow<Boolean> = dataStore.data.map { it[Keys.KEEP_SCREEN_ON] ?: false }
     val defaultFolder: Flow<String> = dataStore.data.map { it[Keys.DEFAULT_FOLDER] ?: "/new_dict/dictionaries" }
     val instantSearch: Flow<Boolean> = dataStore.data.map { it[Keys.INSTANT_SEARCH] ?: false }
+    val isFullText: Flow<Boolean> = dataStore.data.map { it[Keys.IS_FULL_TEXT] ?: false }
+    val isRegexEnabled: Flow<Boolean> = dataStore.data.map { it[Keys.IS_REGEX_ENABLED] ?: false }
     val dictionaryDirectories: Flow<Set<String>> = dataStore.data.map { it[Keys.DICTIONARY_DIRS] ?: emptySet() }
     val bookmarks: Flow<Set<String>> = dataStore.data.map { it[Keys.BOOKMARKS] ?: emptySet() }
 
@@ -132,6 +136,8 @@ class UserPreferencesRepository(private val context: Context) {
     suspend fun setKeepScreenOn(isEnabled: Boolean) = dataStore.edit { it[Keys.KEEP_SCREEN_ON] = isEnabled }
     suspend fun setDefaultFolder(path: String) = dataStore.edit { it[Keys.DEFAULT_FOLDER] = path }
     suspend fun setInstantSearch(isEnabled: Boolean) = dataStore.edit { it[Keys.INSTANT_SEARCH] = isEnabled }
+    suspend fun setFullText(isEnabled: Boolean) = dataStore.edit { it[Keys.IS_FULL_TEXT] = isEnabled }
+    suspend fun setRegexEnabled(isEnabled: Boolean) = dataStore.edit { it[Keys.IS_REGEX_ENABLED] = isEnabled }
 
     suspend fun addDictionaryDirectory(uriString: String) = dataStore.edit { preferences ->
         val currentSet = preferences[Keys.DICTIONARY_DIRS] ?: emptySet()

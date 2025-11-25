@@ -76,6 +76,22 @@ namespace mdict {
  * @param word
  * @return
  */
+
+    std::string normalize_path(const std::string& path) {
+        std::string res = path;
+        // 1. Lowercase
+        std::transform(res.begin(), res.end(), res.begin(), ::tolower);
+
+        // 2. Uniform separators to backslash '\' (standard for MDict)
+        std::replace(res.begin(), res.end(), '/', '\\');
+
+        // 3. Ensure leading backslash
+        if (!res.empty() && res[0] != '\\') {
+            res.insert(0, "\\");
+        }
+        return res;
+    }
+
     std::string Mdict::extract_body_content(const std::string& html) {
         // Find "<body" or "<BODY"
         size_t body_start = html.find("<body");
@@ -1898,6 +1914,75 @@ namespace mdict {
                 }
             }
         }
+        return suggestions;
+    }
+
+    // Helper to convert UTF-8 to wstring (UTF-32 on Linux/Android)
+    std::wstring utf8_to_wstring(const std::string& str) {
+        std::wstring wstr;
+        size_t i = 0;
+        size_t len = str.length();
+        while (i < len) {
+            unsigned char c = str[i];
+            if (c < 0x80) {
+                wstr += (wchar_t)c;
+                i++;
+            } else if ((c & 0xE0) == 0xC0) {
+                if (i + 1 < len) {
+                    wstr += (wchar_t)(((c & 0x1F) << 6) | (str[i + 1] & 0x3F));
+                    i += 2;
+                } else break;
+            } else if ((c & 0xF0) == 0xE0) {
+                if (i + 2 < len) {
+                    wstr += (wchar_t)(((c & 0x0F) << 12) | ((str[i + 1] & 0x3F) << 6) | (str[i + 2] & 0x3F));
+                    i += 3;
+                } else break;
+            } else if ((c & 0xF8) == 0xF0) {
+                if (i + 3 < len) {
+                    wstr += (wchar_t)(((c & 0x07) << 18) | ((str[i + 1] & 0x3F) << 12) | ((str[i + 2] & 0x3F) << 6) | (str[i + 3] & 0x3F));
+                    i += 4;
+                } else break;
+            } else {
+                i++; // Invalid, skip
+            }
+        }
+        return wstr;
+    }
+
+    std::vector<std::string> Mdict::regex_suggest(const std::string regex_str) {
+        std::vector<std::string> suggestions;
+        
+        if (regex_str.empty()) return suggestions;
+
+        // Convert regex pattern to wstring for Unicode support
+        std::wstring wregex_str = utf8_to_wstring(regex_str);
+        
+        std::wregex re;
+        try {
+            // Use case-insensitive matching with wregex
+            re = std::wregex(wregex_str, std::regex_constants::icase);
+            LOGD("Regex compiled successfully: %s", regex_str.c_str());
+        } catch (const std::regex_error& e) {
+            LOGE("Invalid regex: %s, error: %s", regex_str.c_str(), e.what());
+            return suggestions;
+        }
+
+        const size_t max_suggestions = 50;
+        size_t checked_count = 0;
+
+        for (const auto* item : this->key_list) {
+            // Convert key to wstring for matching
+            std::wstring wkey = utf8_to_wstring(item->key_word);
+            
+            if (std::regex_search(wkey, re)) {
+                suggestions.push_back(item->key_word);
+                if (suggestions.size() >= max_suggestions) {
+                    break;
+                }
+            }
+            checked_count++;
+        }
+        LOGD("Checked %zu items, found %zu suggestions", checked_count, suggestions.size());
         return suggestions;
     }
 

@@ -295,6 +295,13 @@ class Mdict {
   std::vector<std::string> suggest(const std::string word);
 
   /**
+   * suggest words matching a regex pattern
+   * @param regex_str the regex pattern
+   * @return vector of matching words
+   */
+  std::vector<std::string> regex_suggest(const std::string regex_str);
+
+  /**
    *
    * @param word
    * @return

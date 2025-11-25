@@ -163,4 +163,42 @@ Java_com_waltermelon_vibedict_data_MdictEngine_getMatchCountNative(
     return count;
 }
 
+// ----------------------------------------------------------------------------
+// 7. Get Regex Suggestions
+// ----------------------------------------------------------------------------
+JNIEXPORT jobjectArray JNICALL
+Java_com_waltermelon_vibedict_data_MdictEngine_getRegexSuggestionsNative(
+        JNIEnv* env,
+        jobject /* this */,
+        jlong dictHandle,
+        jstring regex) {
+
+    if (dictHandle == 0) return nullptr;
+    auto* dict = reinterpret_cast<mdict::Mdict*>(dictHandle);
+
+    const char* c_regex = env->GetStringUTFChars(regex, 0);
+    std::string s_regex(c_regex);
+    env->ReleaseStringUTFChars(regex, c_regex);
+
+    __android_log_print(ANDROID_LOG_DEBUG, "MdictJNI", "getRegexSuggestionsNative called with: %s", s_regex.c_str());
+
+    std::vector<std::string> suggestions = dict->regex_suggest(s_regex);
+
+    __android_log_print(ANDROID_LOG_DEBUG, "MdictJNI", "Found %zu suggestions", suggestions.size());
+
+    jclass stringClass = env->FindClass("java/lang/String");
+    if (stringClass == nullptr) return nullptr;
+
+    jobjectArray stringArray = env->NewObjectArray(suggestions.size(), stringClass, nullptr);
+    if (stringArray == nullptr) return nullptr;
+
+    for (size_t i = 0; i < suggestions.size(); ++i) {
+        jstring javaString = env->NewStringUTF(suggestions[i].c_str());
+        env->SetObjectArrayElement(stringArray, i, javaString);
+        env->DeleteLocalRef(javaString);
+    }
+
+    return stringArray;
+}
+
 } // extern "C"
