@@ -302,6 +302,13 @@ class Mdict {
   std::vector<std::string> regex_suggest(const std::string regex_str);
 
   /**
+   * search for text within definitions
+   * @param query the text to search for
+   * @return vector of matching headwords
+   */
+  std::vector<std::string> fulltext_search(const std::string query);
+
+  /**
    *
    * @param word
    * @return

@@ -15,8 +15,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.outlined.ArrowDownward
 import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -58,6 +60,7 @@ fun SearchScreen(
     // --- NEW: Collect real history and scope ---
     val searchHistory by repository.history.collectAsState(initial = emptyList())
     val isRegexEnabled by repository.isRegexEnabled.collectAsState(initial = false) // <-- NEW
+    val isFullText by repository.isFullText.collectAsState(initial = false) // <-- NEW
     val coroutineScope = rememberCoroutineScope()
     // ------------------------------------------
 
@@ -73,12 +76,29 @@ fun SearchScreen(
 
     // --- UPDATED: Search Logic ---
     // --- UPDATED: Search Logic ---
-    LaunchedEffect(searchQuery, isRegexEnabled) { // <-- Added isRegexEnabled to key
-        if (searchQuery.length > 1) {
+    LaunchedEffect(searchQuery, isRegexEnabled, isFullText) { // <-- Added isFullText to key
+        // Helper to check if a string contains CJK characters (allowing single-char search)
+        fun isCjk(s: String): Boolean {
+            if (s.isEmpty()) return false
+            val c = s.codePointAt(0)
+            return (c in 0x2E80..0x2EFF) || // CJK Radicals Supplement
+                   (c in 0x3000..0x303F) || // CJK Symbols and Punctuation
+                   (c in 0x3040..0x309F) || // Hiragana
+                   (c in 0x30A0..0x30FF) || // Katakana
+                   (c in 0x3100..0x312F) || // Bopomofo
+                   (c in 0x3200..0x32FF) || // Enclosed CJK Letters and Months
+                   (c in 0x3400..0x4DBF) || // CJK Unified Ideographs Extension A
+                   (c in 0x4E00..0x9FFF) || // CJK Unified Ideographs
+                   (c in 0xF900..0xFAFF)    // CJK Compatibility Ideographs
+        }
+
+        val shouldSearch = searchQuery.length > 1 || (searchQuery.isNotEmpty() && isCjk(searchQuery))
+
+        if (shouldSearch) {
             isSearching = true
-            delay(300) // Debounce
+            delay(50) // Reduced debounce for realtime feel
             
-            android.util.Log.d("SearchScreen", "Searching for: '$searchQuery', Regex: $isRegexEnabled")
+            android.util.Log.d("SearchScreen", "Searching for: '$searchQuery', Regex: $isRegexEnabled, FullText: $isFullText")
 
             // 1. Get Active Collection Filter
             val activeId = repository.activeCollectionId.first()
@@ -88,6 +108,8 @@ fun SearchScreen(
             // 2. Perform Suggestion Lookup
             val rawSuggestions = if (isRegexEnabled) {
                 DictionaryManager.getRegexSuggestionsRaw(searchQuery)
+            } else if (isFullText) {
+                 DictionaryManager.getFullTextSuggestionsRaw(searchQuery)
             } else {
                 DictionaryManager.getSuggestionsRaw(searchQuery)
             }
@@ -142,39 +164,137 @@ fun SearchScreen(
     Scaffold(
         contentWindowInsets = WindowInsets.safeDrawing,
         topBar = {
-            TextField(
-                value = searchQuery,
-                onValueChange = { searchQuery = it },
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .statusBarsPadding()
-                    .padding(16.dp)
-                    .focusRequester(focusRequester),
-                placeholder = {
-                    Text(
-                        "Input text...",
-                        style = MaterialTheme.typography.bodyMedium.copy(fontFamily = RobotoFlex)
+            ) {
+                TextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                        .focusRequester(focusRequester),
+                    placeholder = {
+                        Text(
+                            "Input text...",
+                            style = MaterialTheme.typography.bodyMedium.copy(fontFamily = RobotoFlex)
+                        )
+                    },
+                    leadingIcon = {
+                        IconButton(onClick = { navController.popBackStack() }) {
+                            Icon(Icons.Outlined.ArrowDownward, "Go back")
+                        }
+                    },
+                    shape = RoundedCornerShape(12.dp),
+                    colors = TextFieldDefaults.colors(
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent,
+                        disabledIndicatorColor = Color.Transparent,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant
+                    ),
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                    keyboardActions = KeyboardActions(
+                        onSearch = { onSearch(searchQuery) }
                     )
-                },
-                leadingIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Outlined.ArrowDownward, "Go back")
-                    }
-                },
-                shape = RoundedCornerShape(12.dp),
-                colors = TextFieldDefaults.colors(
-                    focusedIndicatorColor = Color.Transparent,
-                    unfocusedIndicatorColor = Color.Transparent,
-                    disabledIndicatorColor = Color.Transparent,
-                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant
-                ),
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                keyboardActions = KeyboardActions(
-                    onSearch = { onSearch(searchQuery) }
                 )
-            )
+
+                // --- NEW: Filter Row ---
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 0.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // 1. Dictionary Filter Dropdown
+                    val collections by repository.collections.collectAsState(initial = emptyList())
+                    val activeCollectionId by repository.activeCollectionId.collectAsState(initial = null)
+                    var isDictionaryDropdownExpanded by remember { mutableStateOf(false) }
+
+                    val activeCollectionName = remember(collections, activeCollectionId) {
+                        collections.find { it.id == activeCollectionId }?.name ?: "All Dictionaries"
+                    }
+
+                    Box {
+                        OutlinedButton(
+                            onClick = { isDictionaryDropdownExpanded = true },
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
+                            modifier = Modifier.height(32.dp)
+                        ) {
+                            Text(
+                                text = activeCollectionName,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Icon(
+                                imageVector = Icons.Default.ArrowDropDown,
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp), // Slightly larger for standard dropdown arrow
+                                tint = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+
+                        DropdownMenu(
+                            expanded = isDictionaryDropdownExpanded,
+                            onDismissRequest = { isDictionaryDropdownExpanded = false }
+                        ) {
+                            collections.forEach { collection ->
+                                DropdownMenuItem(
+                                    text = { Text(collection.name) },
+                                    onClick = {
+                                        coroutineScope.launch {
+                                            repository.setActiveCollection(collection.id)
+                                            isDictionaryDropdownExpanded = false
+                                        }
+                                    },
+                                    leadingIcon = if (collection.id == activeCollectionId) {
+                                        { Icon(Icons.Filled.Check, contentDescription = null) }
+                                    } else null
+                                )
+                            }
+                        }
+                    }
+
+                    // 2. Fulltext Filter
+                    FilterChip(
+                        selected = isFullText,
+                        onClick = { coroutineScope.launch { repository.setFullText(!isFullText) } },
+                        label = { Text("Fulltext") },
+                        leadingIcon = if (isFullText) {
+                            { Icon(imageVector = androidx.compose.material.icons.Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                        } else null,
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.height(32.dp),
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    )
+
+                    // 3. Regex Filter
+                    FilterChip(
+                        selected = isRegexEnabled,
+                        onClick = { coroutineScope.launch { repository.setRegexEnabled(!isRegexEnabled) } },
+                        label = { Text("Regex") },
+                        leadingIcon = if (isRegexEnabled) {
+                            { Icon(imageVector = androidx.compose.material.icons.Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                        } else null,
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.height(32.dp),
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    )
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+            }
         }
     ) { paddingValues ->
         val listModifier = Modifier

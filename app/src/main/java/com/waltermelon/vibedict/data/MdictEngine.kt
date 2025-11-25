@@ -77,6 +77,7 @@ class MdictEngine : Closeable {
     private external fun getMatchCountNative(dictHandle: Long, word: String): Int
     private external fun getSuggestionsNative(dictHandle: Long, prefix: String): Array<String>?
     private external fun getRegexSuggestionsNative(dictHandle: Long, regex: String): Array<String>?
+    private external fun getFullTextSuggestionsNative(dictHandle: Long, query: String): Array<String>?
     
     fun getMatchCount(word: String): Int {
         if (dictionaryHandle == 0L) return 0
@@ -86,5 +87,10 @@ class MdictEngine : Closeable {
     fun getRegexSuggestions(regex: String): List<String> {
         if (dictionaryHandle == 0L) return emptyList()
         return getRegexSuggestionsNative(dictionaryHandle, regex)?.toList() ?: emptyList()
+    }
+
+    fun getFullTextSuggestions(query: String): List<String> {
+        if (dictionaryHandle == 0L) return emptyList()
+        return getFullTextSuggestionsNative(dictionaryHandle, query)?.toList() ?: emptyList()
     }
 }

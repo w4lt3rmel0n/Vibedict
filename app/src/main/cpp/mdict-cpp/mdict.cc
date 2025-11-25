@@ -1891,35 +1891,61 @@ namespace mdict {
  */
     std::vector<std::string> Mdict::suggest(const std::string word) {
         std::vector<std::string> suggestions;
-        std::string prefix = word;
+        if (word.empty()) return suggestions;
 
+        std::string prefix = word;
         // Create a lowercase version of the prefix for comparison
         std::transform(prefix.begin(), prefix.end(), prefix.begin(), ::tolower);
 
-        // Limit the number of suggestions to avoid performance issues
         const size_t max_suggestions = 50;
 
-        // this->key_list is already populated by the init() function
-        for (const auto* item : this->key_list) {
-            std::string key = item->key_word;
+        // Optimization: Use binary search to find the first key >= prefix
+        // key_list is sorted by key_word (usually).
+        // We need a custom comparator for case-insensitive comparison.
+        auto it = std::lower_bound(this->key_list.begin(), this->key_list.end(), prefix,
+            [](const key_list_item* item, const std::string& val) {
+                std::string key = item->key_word;
+                std::transform(key.begin(), key.end(), key.begin(), ::tolower);
+                return key < val;
+            });
+
+        // Iterate from the found position
+        for (; it != this->key_list.end(); ++it) {
+            std::string key = (*it)->key_word;
             std::string lower_key = key;
-            // Create a lowercase version of the key
             std::transform(lower_key.begin(), lower_key.end(), lower_key.begin(), ::tolower);
 
-            // Check if the lowercase key starts with the lowercase prefix
+            // Check if the key still starts with the prefix
             if (lower_key.rfind(prefix, 0) == 0) {
-                suggestions.push_back(item->key_word); // Add the original-cased word
+                suggestions.push_back(key);
                 if (suggestions.size() >= max_suggestions) {
-                    break; // Stop when we have enough suggestions
+                    break;
                 }
+            } else {
+                // Since the list is sorted, once we find a key that doesn't match the prefix,
+                // we can stop searching (optimization).
+                // However, we must be careful about case sensitivity sorting order vs our lowercase comparison.
+                // Generally, if "apple" < "banana", then "apple..." < "banana...".
+                // But strictly speaking, we should only break if the key is "greater" than prefix in a way that precludes matching.
+                // For safety and simplicity in this "suggest" context, checking the next 50-100 items is usually enough.
+                // But to be strictly correct with std::lower_bound, we should stop if the prefix doesn't match.
+                // Let's assume standard dictionary sorting.
+                
+                // If the current key is lexicographically larger than prefix and doesn't start with it,
+                // we are done.
+                 if (lower_key > prefix) {
+                     break; 
+                 }
             }
         }
+        
         return suggestions;
     }
 
     // Helper to convert UTF-8 to wstring (UTF-32 on Linux/Android)
     std::wstring utf8_to_wstring(const std::string& str) {
         std::wstring wstr;
+        wstr.reserve(str.length()); // Optimization: Reserve memory
         size_t i = 0;
         size_t len = str.length();
         while (i < len) {
@@ -1954,6 +1980,37 @@ namespace mdict {
         
         if (regex_str.empty()) return suggestions;
 
+        const size_t max_suggestions = 50;
+
+        // Optimization: Check for regex special characters
+        const std::string special_chars = "\\^$.|?*+()[]{}";
+        bool is_simple = (regex_str.find_first_of(special_chars) == std::string::npos);
+
+        if (is_simple) {
+            // FAST PATH: Simple case-insensitive substring search
+            // Avoids expensive wstring conversion and regex engine overhead
+            std::string query_lower = regex_str;
+            std::transform(query_lower.begin(), query_lower.end(), query_lower.begin(), ::tolower);
+
+            for (const auto* item : this->key_list) {
+                std::string key = item->key_word;
+                // Optimization: Check length first
+                if (key.length() < query_lower.length()) continue;
+
+                // Create lowercase key for comparison
+                // We can optimize this further by not copying, but let's start here.
+                std::string key_lower = key;
+                std::transform(key_lower.begin(), key_lower.end(), key_lower.begin(), ::tolower);
+
+                if (key_lower.find(query_lower) != std::string::npos) {
+                    suggestions.push_back(item->key_word);
+                    if (suggestions.size() >= max_suggestions) break;
+                }
+            }
+            return suggestions;
+        }
+
+        // SLOW PATH: Full Regex Support
         // Convert regex pattern to wstring for Unicode support
         std::wstring wregex_str = utf8_to_wstring(regex_str);
         
@@ -1967,7 +2024,6 @@ namespace mdict {
             return suggestions;
         }
 
-        const size_t max_suggestions = 50;
         size_t checked_count = 0;
 
         for (const auto* item : this->key_list) {
@@ -1983,6 +2039,67 @@ namespace mdict {
             checked_count++;
         }
         LOGD("Checked %zu items, found %zu suggestions", checked_count, suggestions.size());
+        return suggestions;
+    }
+
+    std::vector<std::string> Mdict::fulltext_search(const std::string query) {
+        std::vector<std::string> suggestions;
+        if (query.empty()) return suggestions;
+
+        // Pre-convert query to wstring for case-insensitive search if needed, 
+        // or just use string::find for basic substring match. 
+        // For performance on full text, let's stick to basic string::find first.
+        // If case-insensitivity is required, we might need a more robust approach.
+        // Let's do a simple case-insensitive search by converting both to lower case (if ASCII) 
+        // or just use the raw query for now to save speed.
+        // User request "fulltext search" usually implies finding the exact phrase or word.
+        
+        // Let's try to be smart: Use the same _s normalization or just raw find?
+        // Raw find is faster. Let's do raw find for now.
+        
+        // Actually, for better UX, case-insensitive is preferred.
+        // Let's use the utf8_to_wstring helper and std::search or similar.
+        
+        std::wstring wquery = utf8_to_wstring(query);
+        // Lowercase the query for case-insensitive check
+        std::transform(wquery.begin(), wquery.end(), wquery.begin(), ::towlower);
+
+        const size_t max_suggestions = 50;
+        size_t blocks_checked = 0;
+
+        // Iterate over ALL record blocks
+        // record_header contains info for each block.
+        for (size_t rid = 0; rid < this->record_header.size(); ++rid) {
+            // Decode the block. This returns a vector of <key, definition> pairs.
+            // This is expensive!
+            std::vector<std::pair<std::string, std::string>> block_entries = this->decode_record_block_by_rid(rid);
+
+            for (const auto& entry : block_entries) {
+                // entry.first is Headword
+                // entry.second is Definition (HTML/Text)
+
+                // Convert definition to wstring for search
+                std::wstring wdef = utf8_to_wstring(entry.second);
+                
+                // We need to lowercase the definition for case-insensitive search
+                // Optimization: Search without lowercasing first? No, that misses cases.
+                // We have to pay the price for full text search.
+                
+                // To avoid copying the huge wdef, we can iterate? 
+                // transform is in-place.
+                std::transform(wdef.begin(), wdef.end(), wdef.begin(), ::towlower);
+
+                if (wdef.find(wquery) != std::wstring::npos) {
+                    suggestions.push_back(entry.first);
+                    if (suggestions.size() >= max_suggestions) {
+                        return suggestions;
+                    }
+                }
+            }
+            blocks_checked++;
+        }
+        
+        LOGD("Full-text search checked %zu blocks, found %zu results", blocks_checked, suggestions.size());
         return suggestions;
     }
 

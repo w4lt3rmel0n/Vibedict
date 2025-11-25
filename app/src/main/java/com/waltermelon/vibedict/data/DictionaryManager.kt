@@ -389,6 +389,23 @@ object DictionaryManager {
         return@withContext allSuggestions
     }
 
+    suspend fun getFullTextSuggestionsRaw(query: String): List<Pair<String, String>> = withContext(Dispatchers.IO) {
+        val allSuggestions = mutableListOf<Pair<String, String>>()
+        loadedDictionaries.toList().forEach { dict ->
+            try {
+                dict.mdxEngine?.let { engine ->
+                    val suggestions = engine.getFullTextSuggestions(query)
+                    suggestions.forEach { word ->
+                        allSuggestions.add(Pair(word, dict.id))
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+        return@withContext allSuggestions
+    }
+
     fun getDictionaryById(id: String): LoadedDictionary? {
         return loadedDictionaries.find { it.id == id }
     }

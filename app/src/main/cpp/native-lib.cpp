@@ -201,4 +201,42 @@ Java_com_waltermelon_vibedict_data_MdictEngine_getRegexSuggestionsNative(
     return stringArray;
 }
 
+// ----------------------------------------------------------------------------
+// 8. Get Full Text Suggestions
+// ----------------------------------------------------------------------------
+JNIEXPORT jobjectArray JNICALL
+Java_com_waltermelon_vibedict_data_MdictEngine_getFullTextSuggestionsNative(
+        JNIEnv* env,
+        jobject /* this */,
+        jlong dictHandle,
+        jstring query) {
+
+    if (dictHandle == 0) return nullptr;
+    auto* dict = reinterpret_cast<mdict::Mdict*>(dictHandle);
+
+    const char* c_query = env->GetStringUTFChars(query, 0);
+    std::string s_query(c_query);
+    env->ReleaseStringUTFChars(query, c_query);
+
+    __android_log_print(ANDROID_LOG_DEBUG, "MdictJNI", "getFullTextSuggestionsNative called with: %s", s_query.c_str());
+
+    std::vector<std::string> suggestions = dict->fulltext_search(s_query);
+
+    __android_log_print(ANDROID_LOG_DEBUG, "MdictJNI", "Found %zu full-text matches", suggestions.size());
+
+    jclass stringClass = env->FindClass("java/lang/String");
+    if (stringClass == nullptr) return nullptr;
+
+    jobjectArray stringArray = env->NewObjectArray(suggestions.size(), stringClass, nullptr);
+    if (stringArray == nullptr) return nullptr;
+
+    for (size_t i = 0; i < suggestions.size(); ++i) {
+        jstring javaString = env->NewStringUTF(suggestions[i].c_str());
+        env->SetObjectArrayElement(stringArray, i, javaString);
+        env->DeleteLocalRef(javaString);
+    }
+
+    return stringArray;
+}
+
 } // extern "C"
