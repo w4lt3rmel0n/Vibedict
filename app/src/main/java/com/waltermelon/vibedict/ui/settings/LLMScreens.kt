@@ -12,8 +12,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.waltermelon.vibedict.R
 import com.waltermelon.vibedict.ui.theme.safeNavigate
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -27,7 +29,7 @@ fun LLMProviderListScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("LLM Services") },
+                title = { Text(stringResource(R.string.llm_services)) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -39,7 +41,7 @@ fun LLMProviderListScreen(
                             navController.safeNavigate("llm_provider_config/$newId")
                         }
                     }) {
-                        Icon(Icons.Default.Add, contentDescription = "Add Provider")
+                        Icon(Icons.Default.Add, contentDescription = stringResource(R.string.add_provider))
                     }
                 }
             )
@@ -84,7 +86,7 @@ fun LLMProviderConfigScreen(
 
     if (provider == null) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("Provider not found")
+            Text(stringResource(R.string.provider_not_found))
         }
         return
     }
@@ -111,7 +113,7 @@ fun LLMProviderConfigScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Edit Service") },
+                title = { Text(stringResource(R.string.edit_service)) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -122,7 +124,7 @@ fun LLMProviderConfigScreen(
                         viewModel.deleteLLMProvider(provider.id)
                         navController.popBackStack()
                     }) {
-                        Icon(Icons.Default.Delete, contentDescription = "Delete")
+                        Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.delete))
                     }
                 }
             )
@@ -150,7 +152,7 @@ fun LLMProviderConfigScreen(
                     value = type,
                     onValueChange = {},
                     readOnly = true,
-                    label = { Text("Provider Type") },
+                    label = { Text(stringResource(R.string.provider_type)) },
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isTypeExpanded) },
                     colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
                     modifier = Modifier
@@ -178,14 +180,14 @@ fun LLMProviderConfigScreen(
             OutlinedTextField(
                 value = apiKey,
                 onValueChange = { apiKey = it; update() },
-                label = { Text("API Key") },
+                label = { Text(stringResource(R.string.api_key)) },
                 modifier = Modifier.fillMaxWidth()
             )
 
             OutlinedTextField(
                 value = model,
                 onValueChange = { model = it; update() },
-                label = { Text("Model Name") },
+                label = { Text(stringResource(R.string.model_name)) },
                 modifier = Modifier.fillMaxWidth()
             )
         }
@@ -205,7 +207,7 @@ fun AIPromptConfigScreen(
 
     if (prompt == null) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("Prompt not found")
+            Text(stringResource(R.string.prompt_not_found))
         }
         return
     }
@@ -228,17 +230,17 @@ fun AIPromptConfigScreen(
 
     var expanded by remember { mutableStateOf(false) }
     val selectedProviderName =
-        providers.find { it.id == providerId }?.name ?: "Select Provider"
+        providers.find { it.id == providerId }?.name ?: stringResource(R.string.select_provider)
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Edit AI Prompt") },
+                title = { Text(stringResource(R.string.edit_ai_prompt)) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
+                            contentDescription = stringResource(R.string.back)
                         )
                     }
                 },
@@ -275,7 +277,7 @@ fun AIPromptConfigScreen(
                     value = selectedProviderName,
                     onValueChange = {},
                     readOnly = true,
-                    label = { Text("LLM Provider") },
+                    label = { Text(stringResource(R.string.llm_provider)) },
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
                     colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
                     modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
@@ -301,20 +303,20 @@ fun AIPromptConfigScreen(
             OutlinedTextField(
                 value = promptTemplate,
                 onValueChange = { promptTemplate = it; update() },
-                label = { Text("Prompt Template (use %s for query)") },
+                label = { Text(stringResource(R.string.prompt_template_hint)) },
                 modifier = Modifier.fillMaxWidth().height(150.dp),
                 maxLines = 10
             )
 
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Response Format:", style = MaterialTheme.typography.bodyLarge)
+                Text(stringResource(R.string.response_format), style = MaterialTheme.typography.bodyLarge)
                 Spacer(modifier = Modifier.width(16.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     RadioButton(
                         selected = isHtml,
                         onClick = { isHtml = true; update() }
                     )
-                    Text("HTML")
+                    Text(stringResource(R.string.html))
                 }
                 Spacer(modifier = Modifier.width(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -322,7 +324,7 @@ fun AIPromptConfigScreen(
                         selected = !isHtml,
                         onClick = { isHtml = false; update() }
                     )
-                    Text("Plain Text")
+                    Text(stringResource(R.string.plain_text))
                 }
             }
         }

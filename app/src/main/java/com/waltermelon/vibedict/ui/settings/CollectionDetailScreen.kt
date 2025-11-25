@@ -12,10 +12,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.waltermelon.vibedict.R
 import com.waltermelon.vibedict.WaltermelonApp
 import com.waltermelon.vibedict.data.DictCollection
 import com.waltermelon.vibedict.data.DictionaryManager
@@ -64,6 +66,7 @@ fun CollectionDetailScreen(
             collection?.autoExpandIds?.let { addAll(it) }
         }
     }
+    val unnamedText = stringResource(R.string.unnamed)
     // -----------------------------
 
     val allDictionaries = remember { DictionaryManager.loadedDictionaries }
@@ -86,10 +89,10 @@ fun CollectionDetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(if (isNew) "New Collection" else "Edit Collection") },
+                title = { Text(if (isNew) stringResource(R.string.new_collection) else stringResource(R.string.edit_collection)) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Back")
+                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.back))
                     }
                 },
                 actions = {
@@ -99,7 +102,7 @@ fun CollectionDetailScreen(
                             viewModel.saveCollection(
                                 DictCollection(
                                     id,
-                                    name.ifBlank { "Unnamed" },
+                                    name.ifBlank { unnamedText },
                                     if (isDefault) emptyList() else selectedIds.toList(),
                                     autoExpandIds.toList()
                                 )
@@ -107,7 +110,7 @@ fun CollectionDetailScreen(
                             navController.popBackStack()
                         }
                     ) {
-                        Text("Save")
+                        Text(stringResource(R.string.save))
                     }
                 }
             )
@@ -123,7 +126,7 @@ fun CollectionDetailScreen(
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },
-                label = { Text("Collection Name") },
+                label = { Text(stringResource(R.string.collection_name)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
                 readOnly = isDefault
@@ -131,7 +134,7 @@ fun CollectionDetailScreen(
 
             HorizontalDivider()
 
-            val listTitle = if (isDefault) "Configure Auto-Expand" else "Select Dictionaries & Set Order"
+            val listTitle = if (isDefault) stringResource(R.string.configure_auto_expand) else stringResource(R.string.select_dictionaries_order)
             Text(listTitle, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
 
             // Header for the list
@@ -142,17 +145,17 @@ fun CollectionDetailScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    "Dictionary",
+                    stringResource(R.string.dictionary),
                     style = MaterialTheme.typography.labelMedium,
                     modifier = Modifier.weight(1f)
                 )
                 Text(
-                    "Expand",
+                    stringResource(R.string.expand),
                     style = MaterialTheme.typography.labelMedium,
                     modifier = Modifier.width(72.dp)
                 )
                 Text(
-                    "Load",
+                    stringResource(R.string.load),
                     style = MaterialTheme.typography.labelMedium,
                     modifier = Modifier.width(72.dp)
                 )

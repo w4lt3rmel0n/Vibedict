@@ -106,7 +106,7 @@ fun DefScreen(
                     onQueryChange = { findQuery = it },
                     onClose = {
                         isFindActive = false
-                        findQuery = "" // Clear highlights on close
+                        findQuery = ""
                     },
                     onNext = { findNavEvent = FindNavEvent(true) },
                     onPrev = { findNavEvent = FindNavEvent(false) },
@@ -332,7 +332,6 @@ fun DictionaryBodyItem(
     findNavEvent: FindNavEvent? = null
 ) {
     val coroutineScope = rememberCoroutineScope()
-    val context = androidx.compose.ui.platform.LocalContext.current
 
     val backgroundColor = MaterialTheme.colorScheme.background
     val isDarkTheme = remember(backgroundColor) { backgroundColor.luminance() < 0.5f }
@@ -369,7 +368,11 @@ fun DictionaryBodyItem(
                 factory = { ctx ->
                     AdBlocker.init(ctx)
 
-                    WebView(ctx).apply {
+                    CustomWebView(ctx).apply {
+                        onDefineRequested = { selectedText ->
+                            navController.navigate(Screen.createRouteForWord(selectedText))
+                        }
+                        @android.annotation.SuppressLint("SetJavaScriptEnabled")
                         settings.javaScriptEnabled = true
                         settings.domStorageEnabled = true
                         setBackgroundColor(0x00000000)
@@ -383,7 +386,7 @@ fun DictionaryBodyItem(
                                 // --- A. Serve Local Fonts ---
                                 if (url.startsWith("https://waltermelon.app/fonts/")) {
                                     val requestedFileName = url.substringAfter("https://waltermelon.app/fonts/")
-                                    try {
+                                     try {
                                         val fontFile = File(ctx.filesDir, "fonts/$requestedFileName")
                                         if (fontFile.exists()) {
                                             // Use getMimeType to support .otf as well

@@ -27,8 +27,10 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import com.waltermelon.vibedict.R
 import androidx.lifecycle.Lifecycle
 import androidx.navigation.NavController
 import com.waltermelon.vibedict.data.DictionaryManager
@@ -41,8 +43,6 @@ import kotlinx.coroutines.flow.first // Needed for .first()
 import kotlinx.coroutines.launch
 
 // Data model for search results
-// Data model for search results
-data class SearchResult(val word: String, val source: String)
 // --- NEW: Data model for merged results ---
 data class MergedSearchResult(val word: String, val sources: List<String>)
 
@@ -178,13 +178,13 @@ fun SearchScreen(
                         .focusRequester(focusRequester),
                     placeholder = {
                         Text(
-                            "Input text...",
+                            stringResource(R.string.input_text_placeholder),
                             style = MaterialTheme.typography.bodyMedium.copy(fontFamily = RobotoFlex)
                         )
                     },
                     leadingIcon = {
                         IconButton(onClick = { navController.popBackStack() }) {
-                            Icon(Icons.Outlined.ArrowDownward, "Go back")
+                            Icon(Icons.Outlined.ArrowDownward, stringResource(R.string.go_back))
                         }
                     },
                     shape = RoundedCornerShape(12.dp),
@@ -215,8 +215,9 @@ fun SearchScreen(
                     val activeCollectionId by repository.activeCollectionId.collectAsState(initial = null)
                     var isDictionaryDropdownExpanded by remember { mutableStateOf(false) }
 
-                    val activeCollectionName = remember(collections, activeCollectionId) {
-                        collections.find { it.id == activeCollectionId }?.name ?: "All Dictionaries"
+                    val allDictionariesText = stringResource(R.string.all_dictionaries)
+                    val activeCollectionName = remember(collections, activeCollectionId, allDictionariesText) {
+                        collections.find { it.id == activeCollectionId }?.name ?: allDictionariesText
                     }
 
                     Box {
@@ -265,9 +266,9 @@ fun SearchScreen(
                     FilterChip(
                         selected = isFullText,
                         onClick = { coroutineScope.launch { repository.setFullText(!isFullText) } },
-                        label = { Text("Fulltext") },
+                        label = { Text(stringResource(R.string.fulltext)) },
                         leadingIcon = if (isFullText) {
-                            { Icon(imageVector = androidx.compose.material.icons.Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                            { Icon(imageVector = Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
                         } else null,
                         shape = RoundedCornerShape(8.dp),
                         modifier = Modifier.height(32.dp),
@@ -281,9 +282,9 @@ fun SearchScreen(
                     FilterChip(
                         selected = isRegexEnabled,
                         onClick = { coroutineScope.launch { repository.setRegexEnabled(!isRegexEnabled) } },
-                        label = { Text("Regex") },
+                        label = { Text(stringResource(R.string.regex)) },
                         leadingIcon = if (isRegexEnabled) {
-                            { Icon(imageVector = androidx.compose.material.icons.Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                            { Icon(imageVector = Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
                         } else null,
                         shape = RoundedCornerShape(8.dp),
                         modifier = Modifier.height(32.dp),
@@ -306,7 +307,7 @@ fun SearchScreen(
             if (searchHistory.isEmpty()) {
                 Box(modifier = listModifier, contentAlignment = Alignment.Center) {
                     Text(
-                        "No history yet. Start searching!",
+                        stringResource(R.string.no_history),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -321,14 +322,14 @@ fun SearchScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            "History",
+                            stringResource(R.string.history),
                             style = MaterialTheme.typography.titleSmall,
                             color = MaterialTheme.colorScheme.primary
                         )
                         TextButton(onClick = {
                             coroutineScope.launch { repository.clearHistory() }
                         }) {
-                            Text("Clear All")
+                            Text(stringResource(R.string.clear_all))
                         }
                     }
                     SearchHistoryList(
@@ -342,7 +343,7 @@ fun SearchScreen(
         } else {
             if (searchResults.isEmpty() && !isSearching) {
                 Box(modifier = listModifier, contentAlignment = Alignment.Center) {
-                    Text("No definition found in selected collection.")
+                    Text(stringResource(R.string.no_def_found_collection))
                 }
             } else {
                 SuggestionList(
@@ -372,7 +373,7 @@ fun SearchHistoryList(
                     .padding(vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(Icons.Outlined.History, "History", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                Icon(Icons.Outlined.History, stringResource(R.string.history), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(modifier = Modifier.width(16.dp))
                 Text(historyItem, style = MaterialTheme.typography.bodyLarge)
             }

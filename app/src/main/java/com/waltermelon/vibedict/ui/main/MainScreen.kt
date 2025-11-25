@@ -46,8 +46,9 @@ fun MainScreen(
     val activeId by repository.activeCollectionId.collectAsState(initial = "default_all")
 
     // Find current active name
-    val activeCollectionName = remember(collections, activeId) {
-        collections.find { it.id == activeId }?.name ?: "All Dictionaries"
+    val allDictionariesText = stringResource(R.string.all_dictionaries)
+    val activeCollectionName = remember(collections, activeId, allDictionariesText) {
+        collections.find { it.id == activeId }?.name ?: allDictionariesText
     }
     // --------------------------------------------------------
 
@@ -67,12 +68,12 @@ fun MainScreen(
             title = { },
             navigationIcon = {
                 IconButton(onClick = { navController.safeNavigate(Screen.BOOKMARK) }) {
-                    Icon(Icons.Outlined.Bookmarks, "Bookmark")
+                    Icon(Icons.Outlined.Bookmarks, stringResource(R.string.bookmark))
                 }
             },
             actions = {
                 IconButton(onClick = { navController.safeNavigate(Screen.SETTINGS) }) {
-                    Icon(Icons.Outlined.Settings, "Settings")
+                    Icon(Icons.Outlined.Settings, stringResource(R.string.settings_icon))
                 }
             },
             colors = TopAppBarDefaults.topAppBarColors(
@@ -102,7 +103,7 @@ fun MainScreen(
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                     )
                     Icon(
-                        Icons.Outlined.ArrowDropDown, "Select set",
+                        Icons.Outlined.ArrowDropDown, stringResource(R.string.select_set),
                         tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                     )
                 }
@@ -204,7 +205,7 @@ fun MainScreen(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        text = "Regex",
+                        text = stringResource(R.string.regex),
                         style = MaterialTheme.typography.bodyMedium.copy(
                             fontFamily = RobotoFlex,
                             // CONDITIONAL: Bold if active, Normal if inactive
@@ -231,7 +232,7 @@ private fun SearchBarContent() {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
-            Icons.Outlined.Search, "Search Icon",
+            Icons.Outlined.Search, stringResource(R.string.search_icon),
             tint = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(modifier = Modifier.width(16.dp))

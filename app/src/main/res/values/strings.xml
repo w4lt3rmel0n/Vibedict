@@ -10,7 +10,7 @@
     <string name="upload">Upload</string>
     <string name="view">View</string>
     <string name="close">Close</string>
-    <string name="loading">Loading...</string>
+    <string name="loading">Loading…</string>
     <string name="search">Search</string>
 
     <string name="bookmarks">Bookmarks</string>
@@ -18,7 +18,7 @@
     <string name="search_full_text">Search full text</string>
     <string name="all_dictionaries">All Dictionaries</string>
 
-    <string name="input_text_placeholder">Input text...</string>
+    <string name="input_text_placeholder">Input text…</string>
     <string name="go_back">Go back</string>
     <string name="history">History</string>
     <string name="clear_all">Clear All</string>
@@ -95,12 +95,50 @@
     <string name="light_mode">Light</string>
     <string name="dark_mode">Dark</string>
 
-    <string name="find_in_page_hint">Find in page...</string>
+    <string name="find_in_page_hint">Find in page…</string>
     <string name="previous">Previous</string>
     <string name="next">Next</string>
     <string name="expand">Expand</string>
+    <string name="define">Define</string>
+    <string name="fulltext">Fulltext</string>
+    <string name="regex">Regex</string>
 
-    <string name="loading_dictionaries">Loading dictionaries...</string>
+    <string name="llm_services">LLM Services</string>
+    <string name="add_provider">Add Provider</string>
+    <string name="provider_not_found">Provider not found</string>
+    <string name="edit_service">Edit Service</string>
+    <string name="name">Name</string>
+    <string name="provider_type">Provider Type</string>
+    <string name="api_key">API Key</string>
+    <string name="model_name">Model Name</string>
+    <string name="prompt_not_found">Prompt not found</string>
+    <string name="edit_ai_prompt">Edit AI Prompt</string>
+    <string name="prompt_template_hint">Prompt Template (use %s for query)</string>
+    <string name="response_format">Response Format:</string>
+    <string name="html">HTML</string>
+    <string name="plain_text">Plain Text</string>
+
+    <string name="bookmark">Bookmark</string>
+    <string name="settings_icon">Settings</string>
+    <string name="select_set">Select set</string>
+    <string name="search_icon">Search Icon</string>
+    <string name="light">Light</string>
+    <string name="dark">Dark</string>
+
+    <string name="collections">Collections</string>
+    <string name="create_collection">Create Collection</string>
+    <string name="all_dictionaries_subtitle">All dictionaries</string>
+    <string name="dictionaries_count">%d dictionaries</string>
+    <string name="new_collection">New Collection</string>
+    <string name="edit_collection">Edit Collection</string>
+    <string name="unnamed">Unnamed</string>
+    <string name="collection_name">Collection Name</string>
+    <string name="configure_auto_expand">Configure Auto-Expand</string>
+    <string name="select_dictionaries_order">Select Dictionaries &amp; Set Order</string>
+    <string name="dictionary">Dictionary</string>
+    <string name="load">Load</string>
+
+    <string name="loading_dictionaries">Loading dictionaries…</string>
     <string name="no_folders_linked">No folders linked.</string>
     <string name="invalid_path">Invalid Path</string>
     <string name="remove">Remove</string>

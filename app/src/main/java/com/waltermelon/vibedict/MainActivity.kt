@@ -15,7 +15,6 @@
 package com.waltermelon.vibedict
 
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.core.EaseInOutCubic
@@ -49,6 +48,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -113,8 +113,8 @@ class MainActivity : androidx.appcompat.app.AppCompatActivity() {
             }
 
             val useDarkTheme = when (currentDarkMode) {
-                "Light" -> false
-                "Dark" -> true
+                getString(R.string.light) -> false
+                getString(R.string.dark) -> true
                 else -> isSystemInDarkTheme()
             }
 
@@ -131,8 +131,18 @@ class MainActivity : androidx.appcompat.app.AppCompatActivity() {
 
                     LaunchedEffect(instantSearch, hasPerformedAutoNav) {
                         if (instantSearch && !hasPerformedAutoNav) {
-                            hasPerformedAutoNav = true
                             navController.navigate(Screen.SEARCH)
+                            hasPerformedAutoNav = true
+                        }
+
+                        // Handle PROCESS_TEXT intent (Global "Define" menu)
+                        if (intent?.action == android.content.Intent.ACTION_PROCESS_TEXT) {
+                            val text = intent?.getCharSequenceExtra(android.content.Intent.EXTRA_PROCESS_TEXT)?.toString()
+                            if (!text.isNullOrBlank()) {
+                                navController.navigate(Screen.createRouteForWord(text))
+                                // Clear the intent action so we don't re-navigate on configuration changes
+                                intent?.action = ""
+                            }
                         }
                     }
 
@@ -400,7 +410,7 @@ class MainActivity : androidx.appcompat.app.AppCompatActivity() {
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                     CircularProgressIndicator()
                                     Spacer(modifier = Modifier.height(16.dp))
-                                    Text("Loading dictionaries...", style = MaterialTheme.typography.bodyLarge)
+                                    Text(stringResource(R.string.loading_dictionaries), style = MaterialTheme.typography.bodyLarge)
                                 }
                             }
                         }
