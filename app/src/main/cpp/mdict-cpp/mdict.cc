@@ -1081,19 +1081,17 @@ namespace mdict {
             previous_uncomp_size = record_header[idx - 1]->decompressed_size;
         }
 
-        char *record_block_cmp_buffer = (char *)calloc(comp_size, sizeof(char));
+        // Use std::vector for automatic memory management (RAII)
+        std::vector<char> record_block_cmp_buffer(comp_size);
 
-        this->readfile(record_offset + comp_accu, comp_size, record_block_cmp_buffer);
+        this->readfile(record_offset + comp_accu, comp_size, record_block_cmp_buffer.data());
+
         // 4 bytes, compress type
-        char *comp_type_b = (char *)calloc(4, sizeof(char));
-        memcpy(comp_type_b, record_block_cmp_buffer, 4 * sizeof(char));
-        //    putbytes(comp_type_b, 4, true);
-        int comp_type = comp_type_b[0] & 0xff;
+        int comp_type = record_block_cmp_buffer[0] & 0xff;
+
         // 4 bytes adler32 checksum
-        char *checksum_b = (char *)calloc(4, sizeof(char));
-        memcpy(checksum_b, record_block_cmp_buffer + 4, 4 * sizeof(char));
-        checksum = be_bin_to_u32((unsigned char *)checksum_b);
-        free(checksum_b);
+        // We can read directly from the buffer
+        checksum = be_bin_to_u32((unsigned char *)record_block_cmp_buffer.data() + 4);
 
         if (comp_type == 0 /* not compressed TODO*/) {
             throw std::runtime_error("uncompress block not support yet");
@@ -1103,7 +1101,7 @@ namespace mdict {
                 // TODO
                 throw std::runtime_error("record encrypted not support yet");
             }
-            record_block_decrypted_buff = record_block_cmp_buffer + 8 * sizeof(char);
+            record_block_decrypted_buff = record_block_cmp_buffer.data() + 8 * sizeof(char);
             // decompress
             if (comp_type == 1 /* lzo */) {
                 throw std::runtime_error("lzo compress not support yet");
@@ -1125,9 +1123,7 @@ namespace mdict {
             }
         }
 
-        free(comp_type_b);
-        free(record_block_cmp_buffer);
-        //    free(record_block_uncompressed_b); /* ensure not free twice*/
+        // No need to free manual buffers anymore due to std::vector
 
         unsigned char *record_block = record_block_uncompressed_b;
         /**
@@ -2070,33 +2066,42 @@ namespace mdict {
         // Iterate over ALL record blocks
         // record_header contains info for each block.
         for (size_t rid = 0; rid < this->record_header.size(); ++rid) {
-            // Decode the block. This returns a vector of <key, definition> pairs.
-            // This is expensive!
-            std::vector<std::pair<std::string, std::string>> block_entries = this->decode_record_block_by_rid(rid);
+            try {
+                // Decode the block. This returns a vector of <key, definition> pairs.
+                // This is expensive!
+                std::vector<std::pair<std::string, std::string>> block_entries = this->decode_record_block_by_rid(rid);
 
-            for (const auto& entry : block_entries) {
-                // entry.first is Headword
-                // entry.second is Definition (HTML/Text)
+                for (const auto& entry : block_entries) {
+                    // entry.first is Headword
+                    // entry.second is Definition (HTML/Text)
 
-                // Convert definition to wstring for search
-                std::wstring wdef = utf8_to_wstring(entry.second);
-                
-                // We need to lowercase the definition for case-insensitive search
-                // Optimization: Search without lowercasing first? No, that misses cases.
-                // We have to pay the price for full text search.
-                
-                // To avoid copying the huge wdef, we can iterate? 
-                // transform is in-place.
-                std::transform(wdef.begin(), wdef.end(), wdef.begin(), ::towlower);
+                    // Convert definition to wstring for search
+                    std::wstring wdef = utf8_to_wstring(entry.second);
+                    
+                    // We need to lowercase the definition for case-insensitive search
+                    // Optimization: Search without lowercasing first? No, that misses cases.
+                    // We have to pay the price for full text search.
+                    
+                    // To avoid copying the huge wdef, we can iterate? 
+                    // transform is in-place.
+                    std::transform(wdef.begin(), wdef.end(), wdef.begin(), ::towlower);
 
-                if (wdef.find(wquery) != std::wstring::npos) {
-                    suggestions.push_back(entry.first);
-                    if (suggestions.size() >= max_suggestions) {
-                        return suggestions;
+                    if (wdef.find(wquery) != std::wstring::npos) {
+                        suggestions.push_back(entry.first);
+                        if (suggestions.size() >= max_suggestions) {
+                            return suggestions;
+                        }
                     }
                 }
+                blocks_checked++;
+            } catch (const std::exception& e) {
+                // Log the error but continue searching other blocks
+                LOGE("fulltext_search: Error decoding block %zu: %s. Skipping.", rid, e.what());
+                continue;
+            } catch (...) {
+                LOGE("fulltext_search: Unknown error decoding block %zu. Skipping.", rid);
+                continue;
             }
-            blocks_checked++;
         }
         
         LOGD("Full-text search checked %zu blocks, found %zu results", blocks_checked, suggestions.size());

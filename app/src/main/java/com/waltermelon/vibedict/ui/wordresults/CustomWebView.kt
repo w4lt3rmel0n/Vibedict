@@ -20,19 +20,27 @@ class CustomWebView(context: Context) : WebView(context) {
 
     private inner class CustomActionModeCallback(private val wrapped: ActionMode.Callback?) : ActionMode.Callback2() {
         override fun onCreateActionMode(mode: ActionMode?, menu: Menu?): Boolean {
-            return wrapped?.onCreateActionMode(mode, menu) ?: false
+            val result = wrapped?.onCreateActionMode(mode, menu) ?: false
+            menu?.let {
+                addDefineItem(it)
+            }
+            return result
         }
 
         override fun onPrepareActionMode(mode: ActionMode?, menu: Menu?): Boolean {
             val result = wrapped?.onPrepareActionMode(mode, menu) ?: false
             menu?.let {
-                // Add "Define" item if not present, at index 0 to be first
-                if (it.findItem(MENU_ITEM_DEFINE_ID) == null) {
-                    it.add(Menu.NONE, MENU_ITEM_DEFINE_ID, 0, context.getString(com.waltermelon.vibedict.R.string.define))
-                        .setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM)
-                }
+                addDefineItem(it)
             }
             return result
+        }
+
+        private fun addDefineItem(menu: Menu) {
+            // Add "Define" item if not present, at index 0 to be first
+            if (menu.findItem(MENU_ITEM_DEFINE_ID) == null) {
+                menu.add(Menu.NONE, MENU_ITEM_DEFINE_ID, 0, context.getString(com.waltermelon.vibedict.R.string.define))
+                    .setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM)
+            }
         }
 
         override fun onActionItemClicked(mode: ActionMode?, item: MenuItem?): Boolean {
@@ -81,6 +89,6 @@ class CustomWebView(context: Context) : WebView(context) {
     }
 
     companion object {
-        private const val MENU_ITEM_DEFINE_ID = 1001
+        private const val MENU_ITEM_DEFINE_ID = 100001
     }
 }
