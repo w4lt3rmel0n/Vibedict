@@ -57,6 +57,7 @@ fun SearchScreen(
 
     // --- NEW: Collect real history and scope ---
     val searchHistory by repository.history.collectAsState(initial = emptyList())
+    val isRegexEnabled by repository.isRegexEnabled.collectAsState(initial = false) // <-- NEW
     val coroutineScope = rememberCoroutineScope()
     // ------------------------------------------
 
@@ -72,10 +73,12 @@ fun SearchScreen(
 
     // --- UPDATED: Search Logic ---
     // --- UPDATED: Search Logic ---
-    LaunchedEffect(searchQuery) {
+    LaunchedEffect(searchQuery, isRegexEnabled) { // <-- Added isRegexEnabled to key
         if (searchQuery.length > 1) {
             isSearching = true
             delay(300) // Debounce
+            
+            android.util.Log.d("SearchScreen", "Searching for: '$searchQuery', Regex: $isRegexEnabled")
 
             // 1. Get Active Collection Filter
             val activeId = repository.activeCollectionId.first()
@@ -83,7 +86,13 @@ fun SearchScreen(
             val filterIds = collection?.dictionaryIds
 
             // 2. Perform Suggestion Lookup
-            val rawSuggestions = DictionaryManager.getSuggestionsRaw(searchQuery) // <-- CHANGED
+            val rawSuggestions = if (isRegexEnabled) {
+                DictionaryManager.getRegexSuggestionsRaw(searchQuery)
+            } else {
+                DictionaryManager.getSuggestionsRaw(searchQuery)
+            }
+            
+            android.util.Log.d("SearchScreen", "Found ${rawSuggestions.size} suggestions")
 
             // 3. Apply Collection Filter
             val filteredSuggestions = if (filterIds == null || filterIds.isEmpty()) {

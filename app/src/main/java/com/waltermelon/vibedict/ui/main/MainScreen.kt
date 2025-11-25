@@ -14,6 +14,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -50,7 +51,9 @@ fun MainScreen(
     }
     // --------------------------------------------------------
 
-    var isFullText by remember { mutableStateOf(false) }
+    // --- UPDATED: Get settings from repository ---
+    val isFullText by repository.isFullText.collectAsState(initial = false)
+    val isRegexEnabled by repository.isRegexEnabled.collectAsState(initial = false)
     var showCollectionMenu by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
@@ -147,28 +150,76 @@ fun MainScreen(
             }
         }
 
-        Row(
+        // --- UPDATED: Bottom Toggles in One Card ---
+        Card(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .padding(start = 20.dp, end = 20.dp, bottom = 50.dp)
-                .background(
-                    color = if (isFullText) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
-                    shape = RoundedCornerShape(12.dp)
-                )
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+                .padding(start = 20.dp, end = 20.dp, bottom = 50.dp),
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant
+            )
         ) {
-            Text(
-                text = stringResource(R.string.search_full_text),
-                style = MaterialTheme.typography.bodyLarge.copy(fontFamily = RobotoFlex),
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Switch(
-                checked = isFullText,
-                onCheckedChange = { isFullText = it }
-            )
+            Column(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                // 1. Full Text Toggle
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = stringResource(R.string.search_full_text),
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontFamily = RobotoFlex,
+                            // CONDITIONAL: Bold if active, Normal if inactive
+                            fontWeight = if (isFullText) FontWeight.Bold else FontWeight.Normal
+                        ),
+                        // CONDITIONAL: High Emphasis (Black) if active, Medium Emphasis (Grey) if inactive
+                        color = if (isFullText) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Switch(
+                        checked = isFullText,
+                        onCheckedChange = { coroutineScope.launch { repository.setFullText(it) } },
+                        modifier = Modifier.scale(1.0f)
+                    )
+                }
+
+                // Divider
+                HorizontalDivider(
+                    modifier = Modifier.padding(horizontal = 12.dp),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f)
+                )
+
+                // 2. Regex Toggle
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "Regex",
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontFamily = RobotoFlex,
+                            // CONDITIONAL: Bold if active, Normal if inactive
+                            fontWeight = if (isRegexEnabled) FontWeight.Bold else FontWeight.Normal
+                        ),
+                        // CONDITIONAL: High Emphasis (Black) if active, Medium Emphasis (Grey) if inactive
+                        color = if (isRegexEnabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Switch(
+                        checked = isRegexEnabled,
+                        onCheckedChange = { coroutineScope.launch { repository.setRegexEnabled(it) } },
+                        modifier = Modifier.scale(1.0f)
+                    )
+                }
+            }
         }
     }
 }
