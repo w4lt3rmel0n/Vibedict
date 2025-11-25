@@ -2,6 +2,8 @@ package com.waltermelon.vibedict.ui.search
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -38,31 +40,29 @@ import com.waltermelon.vibedict.data.UserPreferencesRepository //
 import com.waltermelon.vibedict.ui.theme.RobotoFlex
 import com.waltermelon.vibedict.ui.theme.Screen
 import com.waltermelon.vibedict.ui.theme.safeNavigate
+import androidx.compose.animation.core.*
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.draw.alpha
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first // Needed for .first()
 import kotlinx.coroutines.launch
-
-// Data model for search results
-// --- NEW: Data model for merged results ---
-data class MergedSearchResult(val word: String, val sources: List<String>)
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class) // <-- ADDED ExperimentalLayoutApi
 @Composable
 fun SearchScreen(
     navController: NavController,
-    repository: UserPreferencesRepository
+    viewModel: SearchViewModel
 ) {
-    var searchQuery by remember { mutableStateOf("") }
-    // --- UPDATED: Use new data model ---
-    var searchResults by remember { mutableStateOf<List<MergedSearchResult>>(emptyList()) }
-    var isSearching by remember { mutableStateOf(false) }
+    val searchQuery by viewModel.searchQuery.collectAsState()
+    val searchResults by viewModel.searchResults.collectAsState()
+    val isSearching by viewModel.isSearching.collectAsState()
 
-    // --- NEW: Collect real history and scope ---
-    val searchHistory by repository.history.collectAsState(initial = emptyList())
-    val isRegexEnabled by repository.isRegexEnabled.collectAsState(initial = false) // <-- NEW
-    val isFullText by repository.isFullText.collectAsState(initial = false) // <-- NEW
+    val searchHistory by viewModel.searchHistory.collectAsState()
+    val isRegexEnabled by viewModel.isRegexEnabled.collectAsState()
+    val isFullText by viewModel.isFullText.collectAsState()
+    
     val coroutineScope = rememberCoroutineScope()
-    // ------------------------------------------
 
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusRequester = remember { FocusRequester() }
@@ -72,81 +72,6 @@ fun SearchScreen(
         delay(500)
         focusRequester.requestFocus()
         keyboardController?.show()
-    }
-
-    // --- UPDATED: Search Logic ---
-    // --- UPDATED: Search Logic ---
-    LaunchedEffect(searchQuery, isRegexEnabled, isFullText) { // <-- Added isFullText to key
-        // Helper to check if a string contains CJK characters (allowing single-char search)
-        fun isCjk(s: String): Boolean {
-            if (s.isEmpty()) return false
-            val c = s.codePointAt(0)
-            return (c in 0x2E80..0x2EFF) || // CJK Radicals Supplement
-                   (c in 0x3000..0x303F) || // CJK Symbols and Punctuation
-                   (c in 0x3040..0x309F) || // Hiragana
-                   (c in 0x30A0..0x30FF) || // Katakana
-                   (c in 0x3100..0x312F) || // Bopomofo
-                   (c in 0x3200..0x32FF) || // Enclosed CJK Letters and Months
-                   (c in 0x3400..0x4DBF) || // CJK Unified Ideographs Extension A
-                   (c in 0x4E00..0x9FFF) || // CJK Unified Ideographs
-                   (c in 0xF900..0xFAFF)    // CJK Compatibility Ideographs
-        }
-
-        val shouldSearch = searchQuery.length > 1 || (searchQuery.isNotEmpty() && isCjk(searchQuery))
-
-        if (shouldSearch) {
-            isSearching = true
-            delay(50) // Reduced debounce for realtime feel
-            
-            android.util.Log.d("SearchScreen", "Searching for: '$searchQuery', Regex: $isRegexEnabled, FullText: $isFullText")
-
-            // 1. Get Active Collection Filter
-            val activeId = repository.activeCollectionId.first()
-            val collection = repository.collections.first().find { it.id == activeId }
-            val filterIds = collection?.dictionaryIds
-
-            // 2. Perform Suggestion Lookup
-            val rawSuggestions = if (isRegexEnabled) {
-                DictionaryManager.getRegexSuggestionsRaw(searchQuery)
-            } else if (isFullText) {
-                 DictionaryManager.getFullTextSuggestionsRaw(searchQuery)
-            } else {
-                DictionaryManager.getSuggestionsRaw(searchQuery)
-            }
-            
-            android.util.Log.d("SearchScreen", "Found ${rawSuggestions.size} suggestions")
-
-            // 3. Apply Collection Filter
-            val filteredSuggestions = if (filterIds == null || filterIds.isEmpty()) {
-                rawSuggestions // "All Dictionaries"
-            } else {
-                rawSuggestions.filter { it.second in filterIds } // it.second is the dict.id
-            }
-
-            // 4. Map to SearchResult and group by word
-            // (Word, DictID) -> Map<Word, List<DictID>>
-            val groupedByWord = filteredSuggestions.groupBy(
-                keySelector = { it.first }, // group by Word
-                valueTransform = { it.second } // value is List<DictID>
-            )
-
-            // 5. Get display names and map to final MergedSearchResult
-            searchResults = groupedByWord.map { (word, dictIds) ->
-                // Get the unique display names for this word
-                val displayNames = dictIds.map { id ->
-                    val customName = repository.getDictionaryName(id).first()
-                    if (customName.isNotBlank()) customName else {
-                        DictionaryManager.getDictionaryById(id)?.name ?: "Unknown"
-                    }
-                }.distinct() // Show each dictionary name only once
-
-                MergedSearchResult(word, displayNames)
-            }
-
-            isSearching = false
-        } else {
-            searchResults = emptyList()
-        }
     }
 
     val onSearch = { searchTerm: String ->
@@ -161,6 +86,29 @@ fun SearchScreen(
         }
     }
 
+    val searchProgress by DictionaryManager.searchProgress.collectAsState() // Observe progress
+
+    // Shimmer Effect for Progress Bar
+    val transition = rememberInfiniteTransition(label = "shimmer")
+    val translateAnim by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1000f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1200, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "shimmer"
+    )
+    val shimmerBrush = Brush.linearGradient(
+        colors = listOf(
+            MaterialTheme.colorScheme.onBackground,
+            MaterialTheme.colorScheme.onPrimaryContainer,
+            MaterialTheme.colorScheme.background,
+        ),
+        start = Offset(translateAnim - 200f, 0f),
+        end = Offset(translateAnim, 0f)
+    )
+
     Scaffold(
         contentWindowInsets = WindowInsets.safeDrawing,
         topBar = {
@@ -169,38 +117,65 @@ fun SearchScreen(
                     .fillMaxWidth()
                     .statusBarsPadding()
             ) {
-                TextField(
-                    value = searchQuery,
-                    onValueChange = { searchQuery = it },
+                // Custom Search Bar with Background Progress
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(16.dp)
-                        .focusRequester(focusRequester),
-                    placeholder = {
-                        Text(
-                            stringResource(R.string.input_text_placeholder),
-                            style = MaterialTheme.typography.bodyMedium.copy(fontFamily = RobotoFlex)
+                        .height(56.dp) // Standard TextField height
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant) // Base background
+                ) {
+                    // 2. The TextField (Transparent Background)
+                    TextField(
+                        value = searchQuery,
+                        onValueChange = { 
+                            // Block input ONLY if searching AND full-text
+                            if (!(isSearching && isFullText)) {
+                                viewModel.onSearchQueryChanged(it)
+                            }
+                        },
+                        enabled = true, // Always "enabled" to keep focus/keyboard, but we block changes manually above
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .focusRequester(focusRequester),
+                        placeholder = {
+                            Text(
+                                stringResource(R.string.input_text_placeholder),
+                                style = MaterialTheme.typography.bodyMedium.copy(fontFamily = RobotoFlex)
+                            )
+                        },
+                        leadingIcon = {
+                            IconButton(onClick = { navController.popBackStack() }) {
+                                Icon(Icons.Outlined.ArrowDownward, stringResource(R.string.go_back))
+                            }
+                        },
+                        colors = TextFieldDefaults.colors(
+                            focusedIndicatorColor = Color.Transparent,
+                            unfocusedIndicatorColor = Color.Transparent,
+                            disabledIndicatorColor = Color.Transparent,
+                            unfocusedContainerColor = Color.Transparent, // Transparent to show progress behind
+                            focusedContainerColor = Color.Transparent,
+                            disabledContainerColor = Color.Transparent
+                        ),
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                        keyboardActions = KeyboardActions(
+                            onSearch = { onSearch(searchQuery) }
                         )
-                    },
-                    leadingIcon = {
-                        IconButton(onClick = { navController.popBackStack() }) {
-                            Icon(Icons.Outlined.ArrowDownward, stringResource(R.string.go_back))
-                        }
-                    },
-                    shape = RoundedCornerShape(12.dp),
-                    colors = TextFieldDefaults.colors(
-                        focusedIndicatorColor = Color.Transparent,
-                        unfocusedIndicatorColor = Color.Transparent,
-                        disabledIndicatorColor = Color.Transparent,
-                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant
-                    ),
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                    keyboardActions = KeyboardActions(
-                        onSearch = { onSearch(searchQuery) }
                     )
-                )
+
+                    // 3. Progress Bar (Bottom Strip)
+                    if (isSearching && isFullText) {
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.BottomStart)
+                                .fillMaxWidth(searchProgress) // Animate width based on progress
+                                .height(4.dp)
+                                .background(MaterialTheme.colorScheme.primary)
+                        )
+                    }
+                }
 
                 // --- NEW: Filter Row ---
                 Row(
@@ -211,8 +186,8 @@ fun SearchScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     // 1. Dictionary Filter Dropdown
-                    val collections by repository.collections.collectAsState(initial = emptyList())
-                    val activeCollectionId by repository.activeCollectionId.collectAsState(initial = null)
+                    val collections by viewModel.collections.collectAsState()
+                    val activeCollectionId by viewModel.activeCollectionId.collectAsState()
                     var isDictionaryDropdownExpanded by remember { mutableStateOf(false) }
 
                     val allDictionariesText = stringResource(R.string.all_dictionaries)
@@ -249,10 +224,8 @@ fun SearchScreen(
                                 DropdownMenuItem(
                                     text = { Text(collection.name) },
                                     onClick = {
-                                        coroutineScope.launch {
-                                            repository.setActiveCollection(collection.id)
-                                            isDictionaryDropdownExpanded = false
-                                        }
+                                        viewModel.setActiveCollection(collection.id)
+                                        isDictionaryDropdownExpanded = false
                                     },
                                     leadingIcon = if (collection.id == activeCollectionId) {
                                         { Icon(Icons.Filled.Check, contentDescription = null) }
@@ -265,7 +238,7 @@ fun SearchScreen(
                     // 2. Fulltext Filter
                     FilterChip(
                         selected = isFullText,
-                        onClick = { coroutineScope.launch { repository.setFullText(!isFullText) } },
+                        onClick = { viewModel.setFullText(!isFullText) },
                         label = { Text(stringResource(R.string.fulltext)) },
                         leadingIcon = if (isFullText) {
                             { Icon(imageVector = Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
@@ -281,7 +254,7 @@ fun SearchScreen(
                     // 3. Regex Filter
                     FilterChip(
                         selected = isRegexEnabled,
-                        onClick = { coroutineScope.launch { repository.setRegexEnabled(!isRegexEnabled) } },
+                        onClick = { viewModel.setRegexEnabled(!isRegexEnabled) },
                         label = { Text(stringResource(R.string.regex)) },
                         leadingIcon = if (isRegexEnabled) {
                             { Icon(imageVector = Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
@@ -327,7 +300,7 @@ fun SearchScreen(
                             color = MaterialTheme.colorScheme.primary
                         )
                         TextButton(onClick = {
-                            coroutineScope.launch { repository.clearHistory() }
+                            viewModel.clearHistory()
                         }) {
                             Text(stringResource(R.string.clear_all))
                         }

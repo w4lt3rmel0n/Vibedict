@@ -209,41 +209,77 @@ Java_com_waltermelon_vibedict_data_MdictEngine_getFullTextSuggestionsNative(
         JNIEnv* env,
         jobject /* this */,
         jlong dictHandle,
-        jstring query) {
+        jstring query,
+        jobject listener) {
 
-    if (dictHandle == 0) return nullptr;
+    const char* s_query = nullptr;
+    jobject globalListener = nullptr;
     
     try {
+        if (dictHandle == 0) return nullptr;
+
+        s_query = env->GetStringUTFChars(query, nullptr);
+        std::string cpp_query(s_query);
+
         auto* dict = reinterpret_cast<mdict::Mdict*>(dictHandle);
+        
+        std::function<void(float)> progress_cb = nullptr;
+        
+        if (listener != nullptr) {
+            jclass listenerClass = env->GetObjectClass(listener);
+            jmethodID onProgressMethod = env->GetMethodID(listenerClass, "onProgress", "(F)V");
+            
+            if (onProgressMethod != nullptr) {
+                globalListener = env->NewGlobalRef(listener);
+                progress_cb = [env, globalListener, onProgressMethod](float progress) {
+                    env->CallVoidMethod(globalListener, onProgressMethod, progress);
+                };
+            }
+        }
 
-        const char* c_query = env->GetStringUTFChars(query, 0);
-        std::string s_query(c_query);
-        env->ReleaseStringUTFChars(query, c_query);
+        __android_log_print(ANDROID_LOG_DEBUG, "MdictJNI", "getFullTextSuggestionsNative called with: %s", cpp_query.c_str());
 
-        __android_log_print(ANDROID_LOG_DEBUG, "MdictJNI", "getFullTextSuggestionsNative called with: %s", s_query.c_str());
-
-        std::vector<std::string> suggestions = dict->fulltext_search(s_query);
+        std::vector<std::string> suggestions = dict->fulltext_search(cpp_query, progress_cb);
 
         __android_log_print(ANDROID_LOG_DEBUG, "MdictJNI", "Found %zu full-text matches", suggestions.size());
 
-        jclass stringClass = env->FindClass("java/lang/String");
-        if (stringClass == nullptr) return nullptr;
+        if (s_query != nullptr) {
+            env->ReleaseStringUTFChars(query, s_query);
+            s_query = nullptr;
+        }
 
+        jclass stringClass = env->FindClass("java/lang/String");
+        if (stringClass == nullptr) {
+            if (globalListener != nullptr) env->DeleteGlobalRef(globalListener);
+            return nullptr;
+        }
         jobjectArray stringArray = env->NewObjectArray(suggestions.size(), stringClass, nullptr);
-        if (stringArray == nullptr) return nullptr;
+        if (stringArray == nullptr) {
+            if (globalListener != nullptr) env->DeleteGlobalRef(globalListener);
+            return nullptr;
+        }
 
         for (size_t i = 0; i < suggestions.size(); ++i) {
-            jstring javaString = env->NewStringUTF(suggestions[i].c_str());
-            env->SetObjectArrayElement(stringArray, i, javaString);
-            env->DeleteLocalRef(javaString);
+            jstring str = env->NewStringUTF(suggestions[i].c_str());
+            env->SetObjectArrayElement(stringArray, i, str);
+            env->DeleteLocalRef(str);
+        }
+
+        if (globalListener != nullptr) {
+            env->DeleteGlobalRef(globalListener);
         }
 
         return stringArray;
+
     } catch (const std::exception& e) {
         __android_log_print(ANDROID_LOG_ERROR, "MdictJNI", "Exception in getFullTextSuggestionsNative: %s", e.what());
+        if (s_query != nullptr) env->ReleaseStringUTFChars(query, s_query);
+        if (globalListener != nullptr) env->DeleteGlobalRef(globalListener);
         return nullptr;
     } catch (...) {
         __android_log_print(ANDROID_LOG_ERROR, "MdictJNI", "Unknown exception in getFullTextSuggestionsNative");
+        if (s_query != nullptr) env->ReleaseStringUTFChars(query, s_query);
+        if (globalListener != nullptr) env->DeleteGlobalRef(globalListener);
         return nullptr;
     }
 }

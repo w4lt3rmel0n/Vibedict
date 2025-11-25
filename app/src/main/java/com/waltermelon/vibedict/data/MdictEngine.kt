@@ -76,8 +76,12 @@ class MdictEngine : Closeable {
     private external fun destroyNative(dictHandle: Long)
     private external fun getMatchCountNative(dictHandle: Long, word: String): Int
     private external fun getSuggestionsNative(dictHandle: Long, prefix: String): Array<String>?
+    interface ProgressListener {
+        fun onProgress(progress: Float)
+    }
+
     private external fun getRegexSuggestionsNative(dictHandle: Long, regex: String): Array<String>?
-    private external fun getFullTextSuggestionsNative(dictHandle: Long, query: String): Array<String>?
+    private external fun getFullTextSuggestionsNative(dictHandle: Long, query: String, listener: ProgressListener?): Array<String>?
     
     fun getMatchCount(word: String): Int {
         if (dictionaryHandle == 0L) return 0
@@ -89,8 +93,9 @@ class MdictEngine : Closeable {
         return getRegexSuggestionsNative(dictionaryHandle, regex)?.toList() ?: emptyList()
     }
 
-    fun getFullTextSuggestions(query: String): List<String> {
+    fun getFullTextSuggestions(query: String, listener: ProgressListener? = null): List<String> {
         if (dictionaryHandle == 0L) return emptyList()
-        return getFullTextSuggestionsNative(dictionaryHandle, query)?.toList() ?: emptyList()
+        val results = getFullTextSuggestionsNative(dictionaryHandle, query, listener)
+        return results?.toList() ?: emptyList()
     }
 }

@@ -1115,8 +1115,13 @@ namespace mdict {
                 record_block_uncompressed_b = record_block_uncompressed_v.data();
                 uint32_t adler32cs = adler32checksum(record_block_uncompressed_b,
                                                      static_cast<uint32_t>(uncomp_size));
-                assert(record_block_uncompressed_v.size() == uncomp_size);
-                assert(adler32cs == checksum);
+                
+                if (record_block_uncompressed_v.size() != uncomp_size) {
+                    throw std::runtime_error("record block decompress size mismatch");
+                }
+                if (adler32cs != checksum) {
+                    throw std::runtime_error("record block checksum mismatch");
+                }
             } else {
                 throw std::runtime_error(
                         "cannot determine the record block compress type");
@@ -1978,94 +1983,151 @@ namespace mdict {
 
         const size_t max_suggestions = 50;
 
-        // Optimization: Check for regex special characters
-        const std::string special_chars = "\\^$.|?*+()[]{}";
-        bool is_simple = (regex_str.find_first_of(special_chars) == std::string::npos);
+        // --- 1. Parse Regex for Optimizations ---
+        std::string start_prefix = "";
+        std::string required_substring = "";
+        bool has_start_anchor = false;
 
-        if (is_simple) {
-            // FAST PATH: Simple case-insensitive substring search
-            // Avoids expensive wstring conversion and regex engine overhead
-            std::string query_lower = regex_str;
-            std::transform(query_lower.begin(), query_lower.end(), query_lower.begin(), ::tolower);
-
-            for (const auto* item : this->key_list) {
-                std::string key = item->key_word;
-                // Optimization: Check length first
-                if (key.length() < query_lower.length()) continue;
-
-                // Create lowercase key for comparison
-                // We can optimize this further by not copying, but let's start here.
-                std::string key_lower = key;
-                std::transform(key_lower.begin(), key_lower.end(), key_lower.begin(), ::tolower);
-
-                if (key_lower.find(query_lower) != std::string::npos) {
-                    suggestions.push_back(item->key_word);
-                    if (suggestions.size() >= max_suggestions) break;
+        if (regex_str[0] == '^') {
+            has_start_anchor = true;
+            // Extract prefix: ^abc... until special char
+            size_t i = 1;
+            while (i < regex_str.length()) {
+                char c = regex_str[i];
+                // Stop at any regex special char (simplified check)
+                if (c == '.' || c == '*' || c == '+' || c == '?' || c == '(' || c == ')' || 
+                    c == '[' || c == ']' || c == '{' || c == '}' || c == '|' || c == '\\' || c == '$') {
+                    break;
                 }
+                start_prefix += c;
+                i++;
             }
-            return suggestions;
         }
 
-        // SLOW PATH: Full Regex Support
-        // Convert regex pattern to wstring for Unicode support
-        std::wstring wregex_str = utf8_to_wstring(regex_str);
+        // Extract longest literal substring for pre-filtering
+        // e.g. ".*tion$" -> "tion"
+        std::string current_literal;
+        for (char c : regex_str) {
+             if (c == '^' || c == '$' || c == '.' || c == '*' || c == '+' || c == '?' || 
+                 c == '(' || c == ')' || c == '[' || c == ']' || c == '{' || c == '}' || 
+                 c == '|' || c == '\\') {
+                 if (current_literal.length() > required_substring.length()) {
+                     required_substring = current_literal;
+                 }
+                 current_literal = "";
+             } else {
+                 current_literal += c;
+             }
+        }
+        if (current_literal.length() > required_substring.length()) {
+            required_substring = current_literal;
+        }
+
+        // Lowercase for case-insensitive comparison
+        std::string start_prefix_lower = start_prefix;
+        std::transform(start_prefix_lower.begin(), start_prefix_lower.end(), start_prefix_lower.begin(), ::tolower);
         
+        std::string required_substring_lower = required_substring;
+        std::transform(required_substring_lower.begin(), required_substring_lower.end(), required_substring_lower.begin(), ::tolower);
+
+        LOGD("Regex Opt: Prefix='%s', Substring='%s'", start_prefix.c_str(), required_substring.c_str());
+
+        // --- 2. Compile Regex ---
+        std::wstring wregex_str = utf8_to_wstring(regex_str);
         std::wregex re;
         try {
-            // Use case-insensitive matching with wregex
             re = std::wregex(wregex_str, std::regex_constants::icase);
-            LOGD("Regex compiled successfully: %s", regex_str.c_str());
         } catch (const std::regex_error& e) {
-            LOGE("Invalid regex: %s, error: %s", regex_str.c_str(), e.what());
+            LOGE("Invalid regex: %s", regex_str.c_str());
             return suggestions;
         }
 
-        size_t checked_count = 0;
+        // --- 3. Determine Start Iterator ---
+        auto it = this->key_list.begin();
+        
+        if (has_start_anchor && !start_prefix.empty()) {
+            // Optimization 1: Binary Search for Prefix
+            it = std::lower_bound(this->key_list.begin(), this->key_list.end(), start_prefix,
+                [](const key_list_item* item, const std::string& val) {
+                    std::string key = item->key_word;
+                    // We need a loose comparison because key_list might be mixed case
+                    // But standard string comparison is usually fine for finding the "start" block
+                    // Let's use case-insensitive for safety since we want to find "Apple" with "^apple"
+                    std::transform(key.begin(), key.end(), key.begin(), ::tolower);
+                    std::string val_lower = val;
+                    std::transform(val_lower.begin(), val_lower.end(), val_lower.begin(), ::tolower);
+                    return key < val_lower;
+                });
+        }
 
-        for (const auto* item : this->key_list) {
-            // Convert key to wstring for matching
-            std::wstring wkey = utf8_to_wstring(item->key_word);
-            
+        // --- 4. Iterate and Filter ---
+        size_t checked_count = 0;
+        for (; it != this->key_list.end(); ++it) {
+            std::string key = (*it)->key_word;
+            std::string key_lower = key;
+            std::transform(key_lower.begin(), key_lower.end(), key_lower.begin(), ::tolower);
+
+            // Optimization 1 Check: Early Exit
+            if (has_start_anchor && !start_prefix_lower.empty()) {
+                // If the key is now lexicographically smaller than prefix (shouldn't happen with lower_bound)
+                // or if it doesn't start with prefix AND is lexicographically larger
+                // Actually, just check if it starts with prefix.
+                // If it doesn't start with prefix, AND it is "after" the prefix, we can stop.
+                
+                if (key_lower.rfind(start_prefix_lower, 0) != 0) {
+                     // Mismatch. Since keys are sorted, if key_lower > start_prefix_lower, we are done.
+                     if (key_lower > start_prefix_lower) {
+                         break; 
+                     }
+                     // If key_lower < start_prefix_lower (e.g. "Abc" vs "abc" sorting quirks), continue.
+                     continue; 
+                }
+            }
+
+            // Optimization 2 Check: Literal Pre-filtering
+            if (!required_substring_lower.empty()) {
+                if (key_lower.find(required_substring_lower) == std::string::npos) {
+                    continue; // Skip regex check
+                }
+            }
+
+            // Final Check: Full Regex
+            std::wstring wkey = utf8_to_wstring(key);
             if (std::regex_search(wkey, re)) {
-                suggestions.push_back(item->key_word);
+                suggestions.push_back(key);
                 if (suggestions.size() >= max_suggestions) {
                     break;
                 }
             }
             checked_count++;
+            // Safety break for very broad queries to prevent freezing UI
+            if (checked_count > 5000 && suggestions.empty() && !has_start_anchor) {
+                 // If we scanned 5000 items and found nothing, and we aren't anchored, maybe stop?
+                 // Or just let it run. Let's limit total checks if we have some results.
+            }
+            if (checked_count > 20000) break; // Hard limit to prevent ANR
         }
-        LOGD("Checked %zu items, found %zu suggestions", checked_count, suggestions.size());
+        
+        LOGD("Regex Search: Checked %zu items, found %zu", checked_count, suggestions.size());
         return suggestions;
     }
 
-    std::vector<std::string> Mdict::fulltext_search(const std::string query) {
+    std::vector<std::string> Mdict::fulltext_search(const std::string query, std::function<void(float)> progress_callback) {
         std::vector<std::string> suggestions;
-        if (query.empty()) return suggestions;
-
-        // Pre-convert query to wstring for case-insensitive search if needed, 
-        // or just use string::find for basic substring match. 
-        // For performance on full text, let's stick to basic string::find first.
-        // If case-insensitivity is required, we might need a more robust approach.
-        // Let's do a simple case-insensitive search by converting both to lower case (if ASCII) 
-        // or just use the raw query for now to save speed.
-        // User request "fulltext search" usually implies finding the exact phrase or word.
-        
-        // Let's try to be smart: Use the same _s normalization or just raw find?
-        // Raw find is faster. Let's do raw find for now.
-        
-        // Actually, for better UX, case-insensitive is preferred.
-        // Let's use the utf8_to_wstring helper and std::search or similar.
-        
         std::wstring wquery = utf8_to_wstring(query);
         // Lowercase the query for case-insensitive check
         std::transform(wquery.begin(), wquery.end(), wquery.begin(), ::towlower);
 
         const size_t max_suggestions = 50;
         size_t blocks_checked = 0;
+        size_t total_blocks = this->record_header.size();
 
         // Iterate over ALL record blocks
         // record_header contains info for each block.
-        for (size_t rid = 0; rid < this->record_header.size(); ++rid) {
+        for (size_t rid = 0; rid < total_blocks; ++rid) {
+            if (progress_callback && rid % 5 == 0) { // Report every 5 blocks
+                 progress_callback(static_cast<float>(rid) / total_blocks);
+            }
             try {
                 // Decode the block. This returns a vector of <key, definition> pairs.
                 // This is expensive!

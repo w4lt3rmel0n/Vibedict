@@ -262,7 +262,12 @@ class MainActivity : androidx.appcompat.app.AppCompatActivity() {
                                         ) + fadeOut(animationSpec = tween(500, easing = EaseInOutCubic))
                                     }
                                 }
-                            ) { SearchScreen(navController = navController, repository = repository) }
+                            ) {
+                                val viewModel: com.waltermelon.vibedict.ui.search.SearchViewModel = viewModel(
+                                    factory = com.waltermelon.vibedict.ui.search.SearchViewModel.SearchViewModelFactory(repository)
+                                )
+                                SearchScreen(navController = navController, viewModel = viewModel)
+                            }
 
                             // --- 3. DefScreen (Unchanged animation) ---
                             composable(

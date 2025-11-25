@@ -236,7 +236,7 @@ private fun InterfaceSettingsCard(
         }
 
         SettingsRow(
-            icon = Icons.Outlined.Smartphone,
+            icon = Icons.Outlined.Lightbulb,
             title = stringResource(R.string.pref_keep_screen_on),
             subtitle = stringResource(R.string.pref_keep_screen_on_subtitle),
             trailingContent = {
@@ -293,7 +293,7 @@ private fun DataSettingsCard(
     val context = LocalContext.current
     SettingsCard(title = stringResource(R.string.pref_data)) {
         SettingsRow(
-            icon = Icons.Outlined.Info,
+            icon = Icons.Outlined.OpenInNew,
             title = stringResource(R.string.pref_app_info),
             onClick = {
                 val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)

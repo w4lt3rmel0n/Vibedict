@@ -53,7 +53,7 @@
     <string name="pref_manage_collections_subtitle">Group dictionaries into collections</string>
     <string name="pref_llm_service">LLM Service</string>
     <string name="pref_llm_service_subtitle">Configure AI providers</string>
-    <string name="pref_app_info">App Info</string>
+    <string name="pref_app_info">Open system settings</string>
 
     <string name="config_dictionaries">Configure Dictionaries</string>
     <string name="add_local_dict">Add local dictionary</string>
@@ -100,7 +100,7 @@
     <string name="next">Next</string>
     <string name="expand">Expand</string>
     <string name="define">Define</string>
-    <string name="fulltext">Fulltext</string>
+    <string name="fulltext">Full text</string>
     <string name="regex">Regex</string>
 
     <string name="llm_services">LLM Services</string>

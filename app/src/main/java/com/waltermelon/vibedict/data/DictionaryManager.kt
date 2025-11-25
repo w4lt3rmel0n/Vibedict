@@ -4,6 +4,8 @@ import android.content.Context
 import android.net.Uri
 import androidx.documentfile.provider.DocumentFile
 import com.google.ai.client.generativeai.GenerativeModel // <--- NEW: Added Import
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -355,9 +357,11 @@ object DictionaryManager {
         return null
     }
 
-    suspend fun getSuggestionsRaw(prefix: String): List<Pair<String, String>> = withContext(Dispatchers.IO) {
+    suspend fun getSuggestionsRaw(prefix: String, limitToIds: List<String>? = null): List<Pair<String, String>> = withContext(Dispatchers.IO) {
         val allSuggestions = mutableListOf<Pair<String, String>>()
-        loadedDictionaries.toList().forEach { dict ->
+        val dictsToSearch = if (limitToIds.isNullOrEmpty()) loadedDictionaries.toList() else loadedDictionaries.filter { it.id in limitToIds }
+        
+        dictsToSearch.forEach { dict ->
             try {
                 dict.mdxEngine?.let { engine ->
                     val suggestions = engine.getSuggestions(prefix)
@@ -372,9 +376,11 @@ object DictionaryManager {
         return@withContext allSuggestions
     }
 
-    suspend fun getRegexSuggestionsRaw(regex: String): List<Pair<String, String>> = withContext(Dispatchers.IO) {
+    suspend fun getRegexSuggestionsRaw(regex: String, limitToIds: List<String>? = null): List<Pair<String, String>> = withContext(Dispatchers.IO) {
         val allSuggestions = mutableListOf<Pair<String, String>>()
-        loadedDictionaries.toList().forEach { dict ->
+        val dictsToSearch = if (limitToIds.isNullOrEmpty()) loadedDictionaries.toList() else loadedDictionaries.filter { it.id in limitToIds }
+
+        dictsToSearch.forEach { dict ->
             try {
                 dict.mdxEngine?.let { engine ->
                     val suggestions = engine.getRegexSuggestions(regex)
@@ -389,21 +395,45 @@ object DictionaryManager {
         return@withContext allSuggestions
     }
 
-    suspend fun getFullTextSuggestionsRaw(query: String): List<Pair<String, String>> = withContext(Dispatchers.IO) {
+    private val _searchProgress = MutableStateFlow(0f)
+    val searchProgress: StateFlow<Float> = _searchProgress.asStateFlow()
+
+    suspend fun getFullTextSuggestionsRaw(query: String, limitToIds: List<String>? = null): List<Pair<String, String>> = withContext(Dispatchers.IO) {
+        _searchProgress.value = 0f
         val allSuggestions = mutableListOf<Pair<String, String>>()
-        loadedDictionaries.toList().forEach { dict ->
-            try {
-                dict.mdxEngine?.let { engine ->
-                    val suggestions = engine.getFullTextSuggestions(query)
-                    suggestions.forEach { word ->
-                        allSuggestions.add(Pair(word, dict.id))
-                    }
+        val dicts = if (limitToIds.isNullOrEmpty()) loadedDictionaries.toList() else loadedDictionaries.filter { it.id in limitToIds }
+        if (dicts.isEmpty()) return@withContext emptyList()
+
+        val progressMap = java.util.concurrent.ConcurrentHashMap<String, Float>()
+        
+        // Parallelize search
+        val deferredResults = dicts.map { dict ->
+            async {
+                try {
+                    dict.mdxEngine?.let { engine ->
+                        val listener = object : com.waltermelon.vibedict.data.MdictEngine.ProgressListener {
+                            override fun onProgress(progress: Float) {
+                                progressMap[dict.id] = progress
+                                // Calculate average progress
+                                val totalProgress = progressMap.values.sum() / dicts.size
+                                _searchProgress.value = totalProgress
+                            }
+                        }
+                        val suggestions = engine.getFullTextSuggestions(query, listener)
+                        // Ensure 100% progress for this dict upon completion
+                        progressMap[dict.id] = 1.0f
+                        _searchProgress.value = progressMap.values.sum() / dicts.size
+                        
+                        suggestions.map { word -> Pair(word, dict.id) }
+                    } ?: emptyList()
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    emptyList<Pair<String, String>>()
                 }
-            } catch (e: Exception) {
-                e.printStackTrace()
             }
         }
-        return@withContext allSuggestions
+
+        deferredResults.awaitAll().flatten()
     }
 
     fun getDictionaryById(id: String): LoadedDictionary? {

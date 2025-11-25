@@ -13,6 +13,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <cstdio>
+#include <functional>
 #include <string>  // std::stof
 #include <vector>
 
@@ -306,7 +307,7 @@ class Mdict {
    * @param query the text to search for
    * @return vector of matching headwords
    */
-  std::vector<std::string> fulltext_search(const std::string query);
+  std::vector<std::string> fulltext_search(const std::string query, std::function<void(float)> progress_callback = nullptr);
 
   /**
    *
