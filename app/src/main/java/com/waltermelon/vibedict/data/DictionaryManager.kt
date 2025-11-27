@@ -2,8 +2,10 @@ package com.waltermelon.vibedict.data
 
 import android.content.Context
 import android.net.Uri
+import android.system.Os
+import android.system.OsConstants
 import androidx.documentfile.provider.DocumentFile
-import com.google.ai.client.generativeai.GenerativeModel // <--- NEW: Added Import
+import com.google.ai.client.generativeai.GenerativeModel
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.Dispatchers
@@ -11,6 +13,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
+import java.io.FileDescriptor
+import java.security.MessageDigest
 
 object DictionaryManager {
     val loadedDictionaries = mutableListOf<LoadedDictionary>()
@@ -30,6 +34,64 @@ object DictionaryManager {
         val webUrl: String? = null,
         val aiPrompt: AIPrompt? = null
     )
+
+    // --- Helper: Compute partial hash for unique identification ---
+    private fun computeFileHash(fd: FileDescriptor): String {
+        return try {
+            val digest = MessageDigest.getInstance("MD5")
+            val buffer = ByteArray(4096)
+            val fileSize = Os.fstat(fd).st_size
+
+            // 1. Read Header (First 4KB)
+            Os.lseek(fd, 0L, OsConstants.SEEK_SET)
+            var bytesRead = Os.read(fd, buffer, 0, buffer.size)
+            if (bytesRead > 0) digest.update(buffer, 0, bytesRead)
+
+            // 2. Read Middle (4KB from middle)
+            if (fileSize > 8192) {
+                Os.lseek(fd, fileSize / 2, OsConstants.SEEK_SET)
+                bytesRead = Os.read(fd, buffer, 0, buffer.size)
+                if (bytesRead > 0) digest.update(buffer, 0, bytesRead)
+            }
+
+            // 3. Read Footer (Last 4KB)
+            if (fileSize > 4096) {
+                Os.lseek(fd, maxOf(0L, fileSize - 4096), OsConstants.SEEK_SET)
+                bytesRead = Os.read(fd, buffer, 0, buffer.size)
+                if (bytesRead > 0) digest.update(buffer, 0, bytesRead)
+            }
+
+            // 4. Include File Size
+            val sizeBytes = java.nio.ByteBuffer.allocate(8).putLong(fileSize).array()
+            digest.update(sizeBytes)
+
+            // Reset position for MdictEngine
+            Os.lseek(fd, 0L, OsConstants.SEEK_SET)
+
+            // Convert to Hex String
+            digest.digest().joinToString("") { "%02x".format(it) }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            "unknown_hash_${System.currentTimeMillis()}"
+        }
+    }
+
+    // --- Helper: Recursive File Listing ---
+    private fun recursiveListFiles(dir: DocumentFile): List<DocumentFile> {
+        val allFiles = mutableListOf<DocumentFile>()
+        val files = dir.listFiles()
+        for (file in files) {
+            // Exclude hidden files/directories (starting with .)
+            if (file.name?.startsWith(".") == true) continue
+
+            if (file.isDirectory) {
+                allFiles.addAll(recursiveListFiles(file))
+            } else if (file.name != null) {
+                allFiles.add(file)
+            }
+        }
+        return allFiles
+    }
 
     suspend fun reloadDictionaries(
         context: Context,
@@ -87,16 +149,16 @@ object DictionaryManager {
                     val dir = DocumentFile.fromTreeUri(context, uri)
 
                     if (dir != null && dir.canRead()) {
+                        val allFiles = recursiveListFiles(dir) // RECURSIVE SCAN
                         val baseNameRegex = "(\\.\\d+)?\\.(mdx|mdd|css)$".toRegex(RegexOption.IGNORE_CASE)
 
-                        val fileGroups = dir.listFiles()
-                            .filter { it.name != null }
+                        val fileGroups = allFiles
                             .groupBy { it.name!!.replace(baseNameRegex, "") }
 
                         fileGroups.forEach { (baseName, files) ->
                             var mdxEngine: MdictEngine? = null
                             var mdxPath: String? = null
-                            var mainUri = ""
+                            var dictId = "" // Will be the Hash
                             var cssContent = ""
                             var jsContent = ""
 
@@ -109,12 +171,19 @@ object DictionaryManager {
                                 try {
                                     val pfd = context.contentResolver.openFileDescriptor(mdxFile.uri, "r")
                                     if (pfd != null) {
-                                        val fd = pfd.detachFd()
+                                        // --- COMPUTE HASH ---
+                                        // Use the FileDescriptor object for hashing
+                                        val fdObj = pfd.fileDescriptor
+                                        dictId = computeFileHash(fdObj)
+                                        // --------------------
+
+                                        // Detach FD for MdictEngine (which takes ownership/int)
+                                        val fdInt = pfd.detachFd()
+                                        
                                         val engine = MdictEngine()
-                                        if (engine.loadDictionaryFd(fd, false)) {
+                                        if (engine.loadDictionaryFd(fdInt, false)) {
                                             mdxEngine = engine
-                                            mdxPath = mdxFile.uri.path
-                                            mainUri = mdxFile.uri.toString()
+                                            mdxPath = mdxFile.uri.toString() // Store URI as path for reference
                                         } else {
                                             engine.close()
                                         }
@@ -132,7 +201,7 @@ object DictionaryManager {
                                         val engine = MdictEngine()
                                         if (engine.loadDictionaryFd(fd, true)) {
                                             mddEngines.add(engine)
-                                            mddPaths.add(mddFile.uri.path ?: "")
+                                            mddPaths.add(mddFile.uri.toString())
                                         } else {
                                             engine.close()
                                         }
@@ -161,10 +230,23 @@ object DictionaryManager {
                             }
 
                             if (mdxEngine != null || mddEngines.isNotEmpty()) {
-                                val id = if (mainUri.isNotEmpty()) mainUri else mddFiles.firstOrNull()?.uri.toString() ?: ""
+                                // Fallback ID if MDX is missing (unlikely for a valid dict)
+                                if (dictId.isEmpty()) {
+                                    dictId = mddFiles.firstOrNull()?.uri.toString() ?: "unknown_${System.currentTimeMillis()}"
+                                }
+
+                                // --- FIX: Ensure Unique ID ---
+                                var uniqueId = dictId
+                                var dupCounter = 1
+                                while (loadedDictionaries.any { it.id == uniqueId }) {
+                                    uniqueId = "${dictId}_dup_$dupCounter"
+                                    dupCounter++
+                                }
+                                // -----------------------------
+
                                 loadedDictionaries.add(
                                     LoadedDictionary(
-                                        id = id,
+                                        id = uniqueId, // NOW USING UNIQUE HASH
                                         name = baseName,
                                         mdxEngine = mdxEngine,
                                         mddEngines = mddEngines,
@@ -272,7 +354,7 @@ object DictionaryManager {
                     // 4. Format Output
                     val finalContent = if (dict.aiPrompt.isHtml) {
                         // Simple wrapping; add Markdown parsing logic here if desired
-                        "<h3>AI Response</h3><p>$aiResponse</p>"
+                        "<div class='ai-wrapper'>$aiResponse</div>"
                     } else {
                         "<pre>$aiResponse</pre>"
                     }

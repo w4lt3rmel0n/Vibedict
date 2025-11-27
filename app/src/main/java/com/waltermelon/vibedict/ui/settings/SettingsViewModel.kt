@@ -305,7 +305,7 @@ class SettingsViewModel(private val repository: UserPreferencesRepository) : Vie
 
                     // 4. Determine final filename (Sanitize name)
                     val baseName = if (!parsedName.isNullOrBlank()) {
-                        parsedName.replace("[^a-zA-Z0-9_\\-]".toRegex(), "") // Remove spaces and weird chars
+                        parsedName.replace("[^a-zA-Z0-9_\\-\\s]".toRegex(), "") // Allow spaces
                     } else {
                         "font_${UUID.randomUUID().toString().take(8)}"
                     }
@@ -340,16 +340,36 @@ class SettingsViewModel(private val repository: UserPreferencesRepository) : Vie
 
             if (oldFile.exists()) {
                 val extension = oldFile.extension
-                // Sanitize new name
-                val sanitized = newName.replace("[^a-zA-Z0-9_\\-]".toRegex(), "")
+                // Sanitize new name (Allow spaces)
+                val sanitized = newName.replace("[^a-zA-Z0-9_\\-\\s]".toRegex(), "")
                 val newFileName = "$sanitized.$extension"
                 val newFile = File(fontsDir, newFileName)
 
-                if (!newFile.exists() && oldFile.renameTo(newFile)) {
-                    // 1. Remove old path from Repo
-                    repository.removeDictionaryFontPaths(dictId, oldPath)
-                    // 2. Add new path to Repo
-                    repository.addDictionaryFontPaths(dictId, "fonts/$newFileName")
+                // If names are identical (ignoring case/path), do nothing
+                if (oldFile.absolutePath == newFile.absolutePath) return@launch
+
+                if (!newFile.exists()) {
+                    var success = oldFile.renameTo(newFile)
+                    
+                    // Fallback: Copy and Delete if rename fails (e.g. cross-filesystem or locked)
+                    if (!success) {
+                        try {
+                            oldFile.copyTo(newFile, overwrite = true)
+                            if (newFile.exists() && newFile.length() > 0) {
+                                oldFile.delete()
+                                success = true
+                            }
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                        }
+                    }
+
+                    if (success) {
+                        // 1. Remove old path from Repo
+                        repository.removeDictionaryFontPaths(dictId, oldPath)
+                        // 2. Add new path to Repo
+                        repository.addDictionaryFontPaths(dictId, "fonts/$newFileName")
+                    }
                 }
             }
         }
@@ -447,6 +467,60 @@ class SettingsViewModel(private val repository: UserPreferencesRepository) : Vie
         repository.deleteAIPrompt(id)
         val prompts = repository.aiPrompts.first()
         DictionaryManager.updateAIPromptDictionaries(prompts)
+    }
+
+    fun migrateCollectionsToHashes() = viewModelScope.launch {
+        val currentCollections = repository.collections.first().toMutableList()
+        var hasChanges = false
+        val loadedDicts = DictionaryManager.loadedDictionaries.toList()
+
+        val updatedCollections = currentCollections.map { collection ->
+            val newDictIds = collection.dictionaryIds.mapNotNull { oldId ->
+                // 1. Check if it's already a valid Hash ID (exists in loaded dicts)
+                if (loadedDicts.any { it.id == oldId }) {
+                    return@mapNotNull oldId
+                }
+
+                // 2. It's likely a legacy Path ID. Try to find by Path.
+                val matchByPath = loadedDicts.find { it.mdxPath == oldId }
+                if (matchByPath != null) {
+                    hasChanges = true
+                    return@mapNotNull matchByPath.id
+                }
+
+                // 3. Try to find by Filename (Best effort for moved files)
+                // Extract filename from the old ID (which is a URI string)
+                val oldUri = Uri.parse(oldId)
+                val oldFilename = oldUri.lastPathSegment
+                
+                if (oldFilename != null) {
+                    // Find a loaded dict that has the same filename in its path
+                    val matchByName = loadedDicts.find { 
+                        val loadedUri = Uri.parse(it.mdxPath ?: "")
+                        loadedUri.lastPathSegment == oldFilename 
+                    }
+                    if (matchByName != null) {
+                        hasChanges = true
+                        return@mapNotNull matchByName.id
+                    }
+                }
+
+                // 4. If still not found, keep the old ID (it might be a missing file)
+                // We don't want to delete it from the collection yet.
+                oldId
+            }
+
+            if (newDictIds != collection.dictionaryIds) {
+                hasChanges = true
+                collection.copy(dictionaryIds = newDictIds)
+            } else {
+                collection
+            }
+        }
+
+        if (hasChanges) {
+            updatedCollections.forEach { repository.createOrUpdateCollection(it) }
+        }
     }
 
     class SettingsViewModelFactory(private val repository: UserPreferencesRepository) :

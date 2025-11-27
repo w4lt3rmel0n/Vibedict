@@ -76,6 +76,13 @@ import com.waltermelon.vibedict.ui.settings.LLMProviderListScreen
 import com.waltermelon.vibedict.ui.settings.LLMProviderConfigScreen
 import com.waltermelon.vibedict.ui.settings.AIPromptConfigScreen
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+
+import androidx.compose.runtime.DisposableEffect
+import androidx.lifecycle.lifecycleScope
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 
 class MainActivity : androidx.appcompat.app.AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -94,22 +101,35 @@ class MainActivity : androidx.appcompat.app.AppCompatActivity() {
             val materialColour by repository.materialColour.collectAsState(initial = true)
             val instantSearch by repository.instantSearch.collectAsState(initial = false)
 
+// ... (inside setContent)
 
-            LaunchedEffect(Unit) {
-                // Load ALL data from repository
-                val savedDirs = repository.dictionaryDirectories.first()
-                val savedWebEngines = repository.webSearchEngines.first()
-                val savedPrompts = repository.aiPrompts.first()      // <--- NEW
-                val savedProviders = repository.llmProviders.first() // <--- NEW
+            val lifecycleOwner = LocalLifecycleOwner.current
+            DisposableEffect(lifecycleOwner) {
+                val observer = LifecycleEventObserver { _, event ->
+                    if (event == Lifecycle.Event.ON_RESUME) {
+                        // Reload dictionaries and migrate collections on resume
+                        this@MainActivity.lifecycleScope.launch {
+                            val savedDirs = repository.dictionaryDirectories.first()
+                            val savedWebEngines = repository.webSearchEngines.first()
+                            val savedPrompts = repository.aiPrompts.first()
+                            val savedProviders = repository.llmProviders.first()
 
-                // Always reload to ensure DictionaryManager is in sync with saved preferences
-                DictionaryManager.reloadDictionaries(
-                    context = this@MainActivity,
-                    folderUris = savedDirs,
-                    webEngines = savedWebEngines,
-                    aiPrompts = savedPrompts,
-                    llmProviders = savedProviders
-                )
+                            DictionaryManager.reloadDictionaries(
+                                context = this@MainActivity,
+                                folderUris = savedDirs,
+                                webEngines = savedWebEngines,
+                                aiPrompts = savedPrompts,
+                                llmProviders = savedProviders
+                            )
+                            
+                            settingsViewModel.migrateCollectionsToHashes()
+                        }
+                    }
+                }
+                lifecycleOwner.lifecycle.addObserver(observer)
+                onDispose {
+                    lifecycleOwner.lifecycle.removeObserver(observer)
+                }
             }
 
             val useDarkTheme = when (currentDarkMode) {

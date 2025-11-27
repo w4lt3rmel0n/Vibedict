@@ -83,7 +83,13 @@ fun CollectionDetailScreen(
 
     val lazyListState = rememberLazyListState()
     val reorderableState = rememberReorderableLazyListState(lazyListState) { from, to ->
-        selectedIds.add(to.index, selectedIds.removeAt(from.index))
+        val fromId = selectedDicts[from.index].id
+        val toId = selectedDicts[to.index].id
+        val realFromIndex = selectedIds.indexOf(fromId)
+        val realToIndex = selectedIds.indexOf(toId)
+        if (realFromIndex != -1 && realToIndex != -1) {
+            selectedIds.add(realToIndex, selectedIds.removeAt(realFromIndex))
+        }
     }
 
     Scaffold(
