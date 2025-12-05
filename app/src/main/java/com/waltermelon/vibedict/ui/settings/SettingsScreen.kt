@@ -4,12 +4,16 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.ArrowForwardIos
@@ -23,8 +27,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.navigation.NavController
@@ -33,6 +39,8 @@ import com.waltermelon.vibedict.ui.theme.RobotoFlex
 import com.waltermelon.vibedict.ui.theme.safeNavigate
 import androidx.compose.ui.res.stringResource
 import com.waltermelon.vibedict.R
+import com.waltermelon.vibedict.util.LogUtil
+import kotlinx.coroutines.launch
 
 @Composable
 fun getLanguageDisplayName(value: String): String {
@@ -119,10 +127,7 @@ fun SettingsScreen(
             }
 
             item {
-                DataSettingsCard(
-                    onBackupClick = { /* TODO */ },
-                    onRestoreClick = { /* TODO */ }
-                )
+                MiscActionsRow()
             }
         }
     }
@@ -287,25 +292,206 @@ private fun DictionariesSettingsCard(
 }
 
 @Composable
-private fun DataSettingsCard(
-    onBackupClick: () -> Unit,
-    onRestoreClick: () -> Unit
-) {
+private fun MiscActionsRow() {
     val context = LocalContext.current
-    SettingsCard(title = stringResource(R.string.pref_sys)) {
-        SettingsRow(
-            icon = Icons.AutoMirrored.Outlined.OpenInNew,
-            title = stringResource(R.string.pref_app_info),
+    val scope = rememberCoroutineScope()
+    var showLogDialog by remember { mutableStateOf(false) }
+
+    if (showLogDialog) {
+        LogDialog(onDismiss = { showLogDialog = false })
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 16.dp),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Info Button
+        IconButton(
             onClick = {
                 val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
                 val uri = Uri.fromParts("package", context.packageName, null)
                 intent.data = uri
                 context.startActivity(intent)
             },
-            trailingContent = {
-                Icon(Icons.AutoMirrored.Outlined.ArrowForwardIos, null, modifier = Modifier.size(16.dp))
+            modifier = Modifier
+                .size(48.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+        ) {
+            Icon(
+                Icons.Outlined.Info,
+                contentDescription = stringResource(R.string.pref_app_info),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        
+        Spacer(modifier = Modifier.width(32.dp))
+
+        // GitHub Button
+        IconButton(
+            onClick = {
+                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/w4lt3rmel0n/Vibedict"))
+                context.startActivity(intent)
+            },
+            modifier = Modifier
+                .size(48.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+        ) {
+            Icon(
+                painterResource(R.drawable.ic_github),
+                contentDescription = "GitHub",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(24.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.width(32.dp))
+
+        // Bug/Log Button
+        IconButton(
+            onClick = { showLogDialog = true },
+            modifier = Modifier
+                .size(48.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+        ) {
+            Icon(
+                Icons.Outlined.BugReport,
+                contentDescription = "Report Bug",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun LogDialog(onDismiss: () -> Unit) {
+    val context = LocalContext.current
+    var selectedDays by remember { mutableIntStateOf(1) }
+    var logs by remember { mutableStateOf<String?>(null) }
+    var expanded by remember { mutableStateOf(false) }
+    
+    // Day options
+    val options = (1..7).toList()
+
+    LaunchedEffect(selectedDays) {
+        logs = LogUtil.getLogs(selectedDays)
+    }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            shape = RoundedCornerShape(16.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(max = 600.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp)
+            ) {
+                Text(
+                    text = "Application Logs",
+                    style = MaterialTheme.typography.titleLarge,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+
+                // Time Frame Dropdown
+                ExposedDropdownMenuBox(
+                    expanded = expanded,
+                    onExpandedChange = { expanded = !expanded },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    OutlinedTextField(
+                        readOnly = true,
+                        value = "$selectedDays Days",
+                        onValueChange = { },
+                        label = { Text("Time Frame") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                        colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                        modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, true).fillMaxWidth()
+                    )
+                    ExposedDropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false }
+                    ) {
+                        options.forEach { days ->
+                            DropdownMenuItem(
+                                text = { Text("$days Days") },
+                                onClick = {
+                                    selectedDays = days
+                                    expanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Log Content
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp))
+                        .padding(8.dp)
+                ) {
+                    if (logs == null) {
+                        CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                    } else {
+                        val scrollState = rememberScrollState()
+                        Text(
+                            text = logs ?: "",
+                            style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                            modifier = Modifier
+                                .verticalScroll(scrollState)
+                                .fillMaxSize()
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Actions
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(onClick = {
+                        logs?.let { logContent ->
+                            val file = LogUtil.exportLogs(context, logContent)
+                            if (file != null) {
+                                Toast.makeText(context, "Saved to ${file.absolutePath}", Toast.LENGTH_LONG).show()
+                            } else {
+                                Toast.makeText(context, "Failed to save logs", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }) {
+                        Text("Export .log")
+                    }
+                    
+                    TextButton(onClick = {
+                        logs?.let { logContent ->
+                            val file = LogUtil.exportLogs(context, logContent)
+                            if (file != null) {
+                                LogUtil.shareLogs(context, file)
+                            }
+                        }
+                    }) {
+                        Text("Share")
+                    }
+                    
+                    Spacer(modifier = Modifier.width(8.dp))
+                    
+                    Button(onClick = onDismiss) {
+                        Text(stringResource(R.string.close))
+                    }
+                }
             }
-        )
+        }
     }
 }
 

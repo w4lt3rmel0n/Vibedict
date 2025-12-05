@@ -22,6 +22,7 @@ object DictionaryManager {
     var loadedProviders: List<LLMProvider> = emptyList() // Stores the API keys
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+    var isInitialized = false
 
     data class LoadedDictionary(
         val id: String,
@@ -332,6 +333,7 @@ object DictionaryManager {
             e.printStackTrace()
         } finally {
             _isLoading.value = false
+            isInitialized = true
         }
     }
 

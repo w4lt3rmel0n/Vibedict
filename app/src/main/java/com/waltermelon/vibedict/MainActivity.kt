@@ -78,11 +78,7 @@ import com.waltermelon.vibedict.ui.settings.AIPromptConfigScreen
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
-import androidx.compose.runtime.DisposableEffect
-import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
+
 
 class MainActivity : androidx.appcompat.app.AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -103,32 +99,22 @@ class MainActivity : androidx.appcompat.app.AppCompatActivity() {
 
 // ... (inside setContent)
 
-            val lifecycleOwner = LocalLifecycleOwner.current
-            DisposableEffect(lifecycleOwner) {
-                val observer = LifecycleEventObserver { _, event ->
-                    if (event == Lifecycle.Event.ON_RESUME) {
-                        // Reload dictionaries and migrate collections on resume
-                        this@MainActivity.lifecycleScope.launch {
-                            val savedDirs = repository.dictionaryDirectories.first()
-                            val savedWebEngines = repository.webSearchEngines.first()
-                            val savedPrompts = repository.aiPrompts.first()
-                            val savedProviders = repository.llmProviders.first()
+            LaunchedEffect(Unit) {
+                if (!DictionaryManager.isInitialized) {
+                    val savedDirs = repository.dictionaryDirectories.first()
+                    val savedWebEngines = repository.webSearchEngines.first()
+                    val savedPrompts = repository.aiPrompts.first()
+                    val savedProviders = repository.llmProviders.first()
 
-                            DictionaryManager.reloadDictionaries(
-                                context = this@MainActivity,
-                                folderUris = savedDirs,
-                                webEngines = savedWebEngines,
-                                aiPrompts = savedPrompts,
-                                llmProviders = savedProviders
-                            )
-                            
-                            settingsViewModel.migrateCollectionsToHashes()
-                        }
-                    }
-                }
-                lifecycleOwner.lifecycle.addObserver(observer)
-                onDispose {
-                    lifecycleOwner.lifecycle.removeObserver(observer)
+                    DictionaryManager.reloadDictionaries(
+                        context = this@MainActivity,
+                        folderUris = savedDirs,
+                        webEngines = savedWebEngines,
+                        aiPrompts = savedPrompts,
+                        llmProviders = savedProviders
+                    )
+
+                    settingsViewModel.migrateCollectionsToHashes()
                 }
             }
 

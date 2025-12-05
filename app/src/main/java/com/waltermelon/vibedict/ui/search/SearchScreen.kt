@@ -244,11 +244,7 @@ fun SearchScreen(
                             { Icon(imageVector = Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
                         } else null,
                         shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.height(32.dp),
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
+                        modifier = Modifier.height(32.dp)
                     )
 
                     // 3. Regex Filter
@@ -260,11 +256,7 @@ fun SearchScreen(
                             { Icon(imageVector = Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
                         } else null,
                         shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.height(32.dp),
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
+                        modifier = Modifier.height(32.dp)
                     )
                 }
                 Spacer(modifier = Modifier.height(8.dp))
