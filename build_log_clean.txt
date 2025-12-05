@@ -1,0 +1,100 @@
+
+> Task :app:externalNativeBuildCleanDebug
+Clean waltermelon-native-armeabi-v7a
+Clean waltermelon-native-arm64-v8a
+Clean waltermelon-native-x86
+Clean waltermelon-native-x86_64
+
+> Task :app:externalNativeBuildCleanRelease
+Clean waltermelon-native-armeabi-v7a
+Clean waltermelon-native-arm64-v8a
+Clean waltermelon-native-x86
+Clean waltermelon-native-x86_64
+
+> Task :app:clean
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:mergeDebugNativeDebugMetadata NO-SOURCE
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:checkDebugAarMetadata
+> Task :app:processDebugNavigationResources
+> Task :app:compileDebugNavigationResources
+> Task :app:generateDebugResValues
+> Task :app:mapDebugSourceSetPaths
+> Task :app:generateDebugResources
+> Task :app:packageDebugResources
+> Task :app:createDebugCompatibleScreenManifests
+> Task :app:extractDeepLinksDebug
+> Task :app:parseDebugLocalResources
+> Task :app:processDebugMainManifest
+> Task :app:processDebugManifest
+> Task :app:javaPreCompileDebug
+> Task :app:mergeDebugShaders
+> Task :app:compileDebugShaders NO-SOURCE
+> Task :app:generateDebugAssets UP-TO-DATE
+> Task :app:mergeDebugResources
+> Task :app:mergeDebugAssets
+> Task :app:compressDebugAssets
+> Task :app:desugarDebugFileDependencies
+> Task :app:checkDebugDuplicateClasses
+> Task :app:configureCMakeDebug[arm64-v8a]
+> Task :app:mergeLibDexDebug
+
+> Task :app:buildCMakeDebug[arm64-v8a]
+C/C++: ninja: Entering directory `H:\bin\Vibedict-main\app\.cxx\Debug\4y536z67\arm64-v8a'
+C/C++: H:/bin/Vibedict-main/app/src/main/cpp/mdict-cpp/deps/miniz/miniz_zip.c:132:9: warning: Using fopen, ftello, fseeko, stat() etc. path for file I/O - this path may not support large files. [-W#pragma-messages]
+C/C++:   132 | #pragma message("Using fopen, ftello, fseeko, stat() etc. path for file I/O - this path may not support large files.")
+C/C++:       |         ^
+C/C++: 1 warning generated.
+
+> Task :app:configureCMakeDebug[armeabi-v7a]
+
+> Task :app:buildCMakeDebug[armeabi-v7a]
+C/C++: ninja: Entering directory `H:\bin\Vibedict-main\app\.cxx\Debug\4y536z67\armeabi-v7a'
+C/C++: H:/bin/Vibedict-main/app/src/main/cpp/mdict-cpp/deps/miniz/miniz_zip.c:132:9: warning: Using fopen, ftello, fseeko, stat() etc. path for file I/O - this path may not support large files. [-W#pragma-messages]
+C/C++:   132 | #pragma message("Using fopen, ftello, fseeko, stat() etc. path for file I/O - this path may not support large files.")
+C/C++:       |         ^
+C/C++: 1 warning generated.
+
+> Task :app:mergeExtDexDebug
+> Task :app:configureCMakeDebug[x86]
+
+> Task :app:buildCMakeDebug[x86]
+C/C++: ninja: Entering directory `H:\bin\Vibedict-main\app\.cxx\Debug\4y536z67\x86'
+C/C++: H:/bin/Vibedict-main/app/src/main/cpp/mdict-cpp/deps/miniz/miniz_zip.c:132:9: warning: Using fopen, ftello, fseeko, stat() etc. path for file I/O - this path may not support large files. [-W#pragma-messages]
+C/C++:   132 | #pragma message("Using fopen, ftello, fseeko, stat() etc. path for file I/O - this path may not support large files.")
+C/C++:       |         ^
+C/C++: 1 warning generated.
+
+> Task :app:processDebugManifestForPackage
+> Task :app:configureCMakeDebug[x86_64]
+
+> Task :app:buildCMakeDebug[x86_64]
+C/C++: ninja: Entering directory `H:\bin\Vibedict-main\app\.cxx\Debug\4y536z67\x86_64'
+C/C++: H:/bin/Vibedict-main/app/src/main/cpp/mdict-cpp/deps/miniz/miniz_zip.c:132:9: warning: Using fopen, ftello, fseeko, stat() etc. path for file I/O - this path may not support large files. [-W#pragma-messages]
+C/C++:   132 | #pragma message("Using fopen, ftello, fseeko, stat() etc. path for file I/O - this path may not support large files.")
+C/C++:       |         ^
+C/C++: 1 warning generated.
+
+> Task :app:mergeDebugJniLibFolders UP-TO-DATE
+> Task :app:validateSigningDebug UP-TO-DATE
+> Task :app:processDebugResources FAILED
+> Task :app:writeDebugAppMetadata UP-TO-DATE
+> Task :app:writeDebugSigningConfigVersions UP-TO-DATE
+> Task :app:mergeDebugNativeLibs
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:processDebugResources'.
+> A failure occurred while executing com.android.build.gradle.internal.res.LinkApplicationAndroidResourcesTask$TaskAction
+   > Manifest file 'H:\bin\Vibedict-main\app\build\intermediates\packaged_manifests\debug\processDebugManifestForPackage\universal\AndroidManifest.xml' is not a readable file. 
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 1m 3s
+39 actionable tasks: 35 executed, 4 up-to-date

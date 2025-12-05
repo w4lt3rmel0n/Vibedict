@@ -1,0 +1,445 @@
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:mergeDebugNativeDebugMetadata NO-SOURCE
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:checkDebugAarMetadata UP-TO-DATE
+> Task :app:processDebugNavigationResources UP-TO-DATE
+> Task :app:compileDebugNavigationResources UP-TO-DATE
+> Task :app:generateDebugResValues UP-TO-DATE
+> Task :app:mapDebugSourceSetPaths UP-TO-DATE
+> Task :app:generateDebugResources UP-TO-DATE
+> Task :app:mergeDebugResources UP-TO-DATE
+> Task :app:packageDebugResources UP-TO-DATE
+> Task :app:parseDebugLocalResources UP-TO-DATE
+> Task :app:createDebugCompatibleScreenManifests UP-TO-DATE
+> Task :app:extractDeepLinksDebug UP-TO-DATE
+> Task :app:processDebugMainManifest UP-TO-DATE
+> Task :app:processDebugManifest UP-TO-DATE
+> Task :app:processDebugManifestForPackage UP-TO-DATE
+> Task :app:processDebugResources UP-TO-DATE
+> Task :app:javaPreCompileDebug UP-TO-DATE
+> Task :app:mergeDebugShaders UP-TO-DATE
+> Task :app:compileDebugShaders NO-SOURCE
+> Task :app:generateDebugAssets UP-TO-DATE
+> Task :app:mergeDebugAssets UP-TO-DATE
+> Task :app:compressDebugAssets UP-TO-DATE
+> Task :app:checkDebugDuplicateClasses UP-TO-DATE
+> Task :app:desugarDebugFileDependencies UP-TO-DATE
+> Task :app:mergeExtDexDebug UP-TO-DATE
+> Task :app:mergeLibDexDebug UP-TO-DATE
+> Task :app:configureCMakeDebug[arm64-v8a]
+> Task :app:buildCMakeDebug[arm64-v8a]
+> Task :app:configureCMakeDebug[armeabi-v7a]
+> Task :app:buildCMakeDebug[armeabi-v7a]
+> Task :app:configureCMakeDebug[x86]
+> Task :app:buildCMakeDebug[x86]
+> Task :app:configureCMakeDebug[x86_64]
+> Task :app:buildCMakeDebug[x86_64]
+> Task :app:mergeDebugJniLibFolders UP-TO-DATE
+> Task :app:mergeDebugNativeLibs UP-TO-DATE
+> Task :app:stripDebugDebugSymbols UP-TO-DATE
+> Task :app:validateSigningDebug UP-TO-DATE
+> Task :app:writeDebugAppMetadata UP-TO-DATE
+> Task :app:writeDebugSigningConfigVersions UP-TO-DATE
+
+> Task :app:compileDebugKotlin FAILED
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:155:17 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:155:17 Not enough information to infer type argument for 'T'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:155:23 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:270:37 'if' must have both main and 'else' branches when used as an expression.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:275:46 Syntax error: Expecting 'catch' or 'finally'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:276:43 Unresolved reference 'catch'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:276:50 Unresolved reference 'e'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:276:51 Syntax error: Expecting ')'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:276:51 Syntax error: Unexpected tokens (use ';' to separate expressions on the same line).
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:276:66 Unresolved reference 'e'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:277:38 Syntax error: Expecting 'catch' or 'finally'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:285:58 Unresolved reference 'cssFile'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:286:58 Unresolved reference 'jsFile'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:288:45 Unresolved reference 'externalResources'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:292:41 Unresolved reference 'mdxEngine'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:292:62 Unresolved reference 'mddEngines'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:294:45 Unresolved reference 'dictId'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:295:45 Unresolved reference 'dictId'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:295:54 Unresolved reference 'mddFiles'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:295:78 Unresolved reference 'uri'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:299:50 Unresolved reference 'dictId'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:301:57 Unresolved reference 'mdxEngine'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:302:58 Unresolved reference 'mddEngines'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:303:55 Unresolved reference 'mdxPath'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:304:56 Unresolved reference 'mddPaths'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:305:65 Unresolved reference 'cssContent'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:306:64 Unresolved reference 'jsContent'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:307:65 Unresolved reference 'externalResources'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:312:35 Unresolved reference 'catch'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:312:42 Unresolved reference 'e'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:312:43 Syntax error: Expecting ')'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:312:43 Syntax error: Unexpected tokens (use ';' to separate expressions on the same line).
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:313:37 Unresolved reference 'e'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:317:26 Syntax error: Expecting 'catch' or 'finally'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:317:27 Syntax error: Unexpected tokens (use ';' to separate expressions on the same line).
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:318:29 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:318:29 Not enough information to infer type argument for 'T'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:320:23 Unresolved reference 'catch'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:320:30 Unresolved reference 'e'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:320:31 Syntax error: Expecting ')'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:320:31 Syntax error: Unexpected tokens (use ';' to separate expressions on the same line).
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:321:25 Unresolved reference 'e'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:325:14 Syntax error: Expecting 'catch' or 'finally'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:325:15 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:325:15 Unresolved reference. None of the following candidates is applicable because of a receiver type mismatch:
+suspend fun <T> Collection<Deferred<T>>.awaitAll(): List<T>
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:325:26 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:325:26 Not enough information to infer type argument for 'T'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:330:32 Unresolved reference 'loadedLocalDicts'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:330:60 Unresolved reference 'mdxPath'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:330:62 Unresolved reference 'it'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:330:75 Overload resolution ambiguity between candidates:
+fun <T> Array<out T>.toSet(): Set<T>
+fun BooleanArray.toSet(): Set<Boolean>
+fun ByteArray.toSet(): Set<Byte>
+fun CharArray.toSet(): Set<Char>
+fun DoubleArray.toSet(): Set<Double>
+fun FloatArray.toSet(): Set<Float>
+fun IntArray.toSet(): Set<Int>
+fun LongArray.toSet(): Set<Long>
+fun ShortArray.toSet(): Set<Short>
+fun <T> Iterable<T>.toSet(): Set<T>
+fun <T> Sequence<T>.toSet(): Set<T>
+fun CharSequence.toSet(): Set<Char>
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:335:13 Unresolved reference 'loadedLocalDicts'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:335:40 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:336:61 Unresolved reference 'id'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:340:26 Unresolved reference 'mdxEngine'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:341:26 Unresolved reference 'mddEngines'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:341:45 Unresolved reference 'close'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:341:47 Unresolved reference 'it'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:348:11 Unresolved reference 'catch'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:348:18 Unresolved reference 'e'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:348:19 Syntax error: Expecting ')'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:348:19 Syntax error: Expecting member declaration.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:348:21 Syntax error: Expecting member declaration.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:348:30 Syntax error: Expecting member declaration.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:348:32 Syntax error: Expecting member declaration.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:348:32 Function declaration must have a name.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:349:13 Unresolved reference 'e'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:350:11 Syntax error: Expecting member declaration.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:350:19 Syntax error: Expecting member declaration.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:350:19 Function declaration must have a name.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:356:9 Unresolved reference 'loadedDictionaries'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:356:28 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:356:38 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:356:43 Unresolved reference 'webUrl'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:358:13 Unresolved reference 'loadedDictionaries'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:359:17 Unresolved reference 'LoadedDictionary'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:363:34 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:365:32 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:373:9 Unresolved reference 'loadedDictionaries'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:373:28 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:373:38 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:373:43 Unresolved reference 'aiPrompt'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:375:13 Unresolved reference 'loadedDictionaries'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:376:17 Unresolved reference 'LoadedDictionary'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:380:34 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:382:32 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:390:9 Unresolved reference 'loadedDictionaries'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:390:36 Overload resolution ambiguity between candidates:
+fun <T> Iterable<T>.forEach(action: (T) -> Unit): Unit
+fun <K, V> Map<out K, V>.forEach(action: (Map.Entry<K, V>) -> Unit): Unit
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:391:13 Unresolved reference 'it'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:392:13 Unresolved reference 'it'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:392:37 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:392:54 Unresolved reference 'close'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:394:9 Unresolved reference 'loadedDictionaries'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:399:9 Unresolved reference 'loadedDictionaries'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:399:37 Overload resolution ambiguity between candidates:
+fun <T> Iterable<T>.forEach(action: (T) -> Unit): Unit
+fun <K, V> Map<out K, V>.forEach(action: (Map.Entry<K, V>) -> Unit): Unit
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:399:47 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:401:17 Argument type mismatch: actual type is 'K#2 (type parameter of fun <K> WHEN_CALL(vararg branches: K): K)', but 'K#1 (type parameter of fun <K> TRY_CALL(vararg branches: K): K)' was expected.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:401:26 Unresolved reference 'webUrl'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:403:36 Unresolved reference 'webUrl'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:405:21 Argument type mismatch: actual type is 'kotlin.Boolean', but 'K' was expected.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:405:45 Unresolved reference 'id'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:405:54 Unresolved reference 'name'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:407:24 Argument type mismatch: actual type is 'K', but 'K' was expected.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:407:33 Unresolved reference 'aiPrompt'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:411:43 Unresolved reference 'aiPrompt'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:414:36 Unresolved reference 'loadedProviders'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:414:59 Unresolved reference 'it'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:414:73 Unresolved reference 'aiPrompt'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:417:71 Unresolved reference 'apiKey'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:422:54 Unresolved reference 'model'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:423:51 Unresolved reference 'apiKey'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:427:60 Suspension functions can only be called within coroutine body.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:437:49 Unresolved reference 'aiPrompt'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:444:21 Argument type mismatch: actual type is 'kotlin.Boolean', but 'K' was expected.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:444:45 Unresolved reference 'id'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:444:54 Unresolved reference 'name'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:447:21 Argument type mismatch: actual type is 'R?', but 'K' was expected.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:447:26 Unresolved reference 'mdxEngine'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:447:37 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:447:43 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:451:47 Unresolved reference 'lookup'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:453:39 Method 'iterator()' is ambiguous for this expression. Applicable candidates:
+fun <T> Enumeration<T>.iterator(): Iterator<T>
+fun <T> Iterator<T>.iterator(): Iterator<T>
+fun <K, V> Map<out K, V>.iterator(): Iterator<Map.Entry<K, V>>
+fun <K, V> MutableMap<K, V>.iterator(): MutableIterator<MutableMap.MutableEntry<K, V>>
+fun CharSequence.iterator(): CharIterator
+fun BufferedInputStream.iterator(): ByteIterator
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:467:55 Unresolved reference 'id'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:487:53 Unresolved reference 'id'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:487:62 Unresolved reference 'name'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:492:17 Argument type mismatch: actual type is 'kotlin.Unit', but 'K' was expected.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:508:28 Unresolved reference 'loadedDictionaries'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:511:26 Method 'iterator()' is ambiguous for this expression. Applicable candidates:
+fun <T> Enumeration<T>.iterator(): Iterator<T>
+fun <T> Iterator<T>.iterator(): Iterator<T>
+fun <K, V> Map<out K, V>.iterator(): Iterator<Map.Entry<K, V>>
+fun <K, V> MutableMap<K, V>.iterator(): MutableIterator<MutableMap.MutableEntry<K, V>>
+fun CharSequence.iterator(): CharIterator
+fun BufferedInputStream.iterator(): ByteIterator
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:512:43 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:513:46 Unresolved reference 'lookup'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:518:29 'return' is prohibited here.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:530:20 Unresolved reference 'loadedDictionaries'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:530:46 Unresolved reference 'it'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:540:18 Unresolved reference 'mddEngines'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:540:39 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:541:42 Unresolved reference 'lookup'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:545:114 Unresolved reference 'name'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:546:25 'return' is prohibited here.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:554:18 Unresolved reference 'mdxEngine'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:556:36 Unresolved reference 'mdxEngine'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:557:21 Unresolved reference 'not' for operator '!'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:558:35 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:560:121 Unresolved reference 'name'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:572:38 Unresolved reference 'externalResources'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:573:25 Unresolved reference 'externalResources'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:573:58 Unresolved reference 'it'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:573:104 Unresolved reference 'value'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:577:41 Argument type mismatch: actual type is 'kotlin.text.MatchGroup', but 'kotlin.String!' was expected.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:593:61 Unresolved reference 'loadedDictionaries'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:593:94 Unresolved reference 'loadedDictionaries'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:593:122 Unresolved reference 'it'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:595:23 Overload resolution ambiguity between candidates:
+fun <T> Iterable<T>.forEach(action: (T) -> Unit): Unit
+fun <K, V> Map<out K, V>.forEach(action: (Map.Entry<K, V>) -> Unit): Unit
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:595:33 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:597:17 Argument type mismatch: actual type is 'R?', but 'K' was expected.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:597:22 Unresolved reference 'mdxEngine'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:597:33 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:597:39 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:598:46 Unresolved reference 'getSuggestions'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:599:43 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:600:60 Unresolved reference 'id'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:604:17 Argument type mismatch: actual type is 'kotlin.Unit', but 'K' was expected.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:612:61 Unresolved reference 'loadedDictionaries'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:612:94 Unresolved reference 'loadedDictionaries'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:612:122 Unresolved reference 'it'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:614:23 Overload resolution ambiguity between candidates:
+fun <T> Iterable<T>.forEach(action: (T) -> Unit): Unit
+fun <K, V> Map<out K, V>.forEach(action: (Map.Entry<K, V>) -> Unit): Unit
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:614:33 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:616:17 Argument type mismatch: actual type is 'R?', but 'K' was expected.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:616:22 Unresolved reference 'mdxEngine'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:616:33 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:616:39 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:617:46 Unresolved reference 'getRegexSuggestions'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:618:43 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:619:60 Unresolved reference 'id'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:623:17 Argument type mismatch: actual type is 'kotlin.Unit', but 'K' was expected.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:635:53 Unresolved reference 'loadedDictionaries'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:635:86 Unresolved reference 'loadedDictionaries'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:635:114 Unresolved reference 'it'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:636:19 Overload resolution ambiguity between candidates:
+fun <T> Array<out T>.isEmpty(): Boolean
+fun BooleanArray.isEmpty(): Boolean
+fun ByteArray.isEmpty(): Boolean
+fun CharArray.isEmpty(): Boolean
+fun DoubleArray.isEmpty(): Boolean
+fun FloatArray.isEmpty(): Boolean
+fun IntArray.isEmpty(): Boolean
+fun LongArray.isEmpty(): Boolean
+fun ShortArray.isEmpty(): Boolean
+fun CharSequence.isEmpty(): Boolean
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:641:37 Overload resolution ambiguity between candidates:
+fun <R, T> Result<T>.map(transform: (@ParameterName(...) T) -> R): Result<R>
+    [R|Contract description]
+     <
+        CallsInPlace(transform, AT_MOST_ONCE)
+    >
+fun <T, R> Array<out T>.map(transform: (T) -> R): List<R>
+fun <R> BooleanArray.map(transform: (Boolean) -> R): List<R>
+fun <R> ByteArray.map(transform: (Byte) -> R): List<R>
+fun <R> CharArray.map(transform: (Char) -> R): List<R>
+fun <R> DoubleArray.map(transform: (Double) -> R): List<R>
+fun <R> FloatArray.map(transform: (Float) -> R): List<R>
+fun <R> IntArray.map(transform: (Int) -> R): List<R>
+fun <R> LongArray.map(transform: (Long) -> R): List<R>
+fun <R> ShortArray.map(transform: (Short) -> R): List<R>
+fun <T, R> Iterable<T>.map(transform: (T) -> R): List<R>
+fun <K, V, R> Map<out K, V>.map(transform: (Map.Entry<K, V>) -> R): List<R>
+fun <R> UByteArray.map(transform: (UByte) -> R): List<R>
+fun <R> UIntArray.map(transform: (UInt) -> R): List<R>
+fun <R> ULongArray.map(transform: (ULong) -> R): List<R>
+fun <R> UShortArray.map(transform: (UShort) -> R): List<R>
+fun <T, R> Sequence<T>.map(transform: (T) -> R): Sequence<R>
+fun <R> CharSequence.map(transform: (Char) -> R): List<R>
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:641:43 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:642:13 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:642:13 Not enough information to infer type argument for 'T'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:642:19 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:643:17 Not enough information to infer type argument for 'K'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:644:21 Argument type mismatch: actual type is 'R?', but 'K?' was expected.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:644:21 Argument type mismatch: actual type is 'K#2 (type parameter of fun <K> ELVIS_CALL(x: K?, y: K): K)', but 'K#1 (type parameter of fun <K> TRY_CALL(vararg branches: K): K)' was expected.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:644:21 Not enough information to infer type argument for 'K'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:644:26 Unresolved reference 'mdxEngine'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:644:37 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:644:37 Not enough information to infer type argument for 'R'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:644:43 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:647:50 Unresolved reference 'id'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:649:86 Unresolved reference 'size'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:653:50 Unresolved reference 'getFullTextSuggestions'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:655:42 Unresolved reference 'id'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:656:82 Unresolved reference 'size'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:658:43 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:658:51 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:658:67 Unresolved reference 'id'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:659:26 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:659:26 Not enough information to infer type argument for 'T'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:659:26 Argument type mismatch: actual type is 'kotlin.collections.List<T>', but 'K' was expected.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:662:21 Argument type mismatch: actual type is 'kotlin.collections.List<kotlin.Pair<kotlin.String, kotlin.String>>', but 'K' was expected.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:667:25 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:667:25 Not enough information to infer type argument for 'T'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:670:40 Unresolved reference 'LoadedDictionary'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:671:16 Unresolved reference 'loadedDictionaries'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:671:42 Unresolved reference 'it'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/data/DictionaryManager.kt:673:1 Syntax error: Expecting a top level declaration.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/ui/search/SearchScreen.kt:89:27 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/ui/search/SearchScreen.kt:89:27 Property delegate must have a 'getValue(Nothing?, KProperty0<ERROR CLASS: Cannot infer argument for type parameter T>)' method. None of the following functions is applicable:
+fun <T> State<T>.getValue(thisObj: Any?, property: KProperty<*>): T
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/ui/search/SearchScreen.kt:89:45 Unresolved reference 'searchProgress'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/ui/search/SearchScreen.kt:89:60 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/ui/search/SearchViewModel.kt:118:35 Unresolved reference 'getRegexSuggestionsRaw'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/ui/search/SearchViewModel.kt:120:35 Unresolved reference 'getFullTextSuggestionsRaw'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/ui/search/SearchViewModel.kt:122:35 Unresolved reference 'getSuggestionsRaw'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/ui/search/SearchViewModel.kt:125:75 Unresolved reference 'size'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/ui/search/SearchViewModel.kt:132:31 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/ui/search/SearchViewModel.kt:132:33 Unresolved reference 'it'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/ui/search/SearchViewModel.kt:132:36 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/ui/search/SearchViewModel.kt:132:36 Suspension functions can only be called within coroutine body.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/ui/search/SearchViewModel.kt:133:34 Unresolved reference 'second'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/ui/search/SearchViewModel.kt:133:36 Unresolved reference 'it'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/ui/search/SearchViewModel.kt:139:44 Unresolved reference 'values'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/ui/search/SearchViewModel.kt:139:51 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/ui/search/SearchViewModel.kt:139:51 'fun <T> Flow<Flow<T>>.flatten(): Flow<T>' is deprecated. Flow analogue of 'flatten' is 'flattenConcat'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/ui/search/SearchViewModel.kt:139:61 Unresolved reference 'distinct'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/ui/search/SearchViewModel.kt:144:46 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/ui/search/SearchViewModel.kt:144:46 Not enough information to infer type argument for 'T'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/ui/search/SearchViewModel.kt:144:46 Not enough information to infer type argument for 'R'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/ui/search/SearchViewModel.kt:144:52 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/ui/search/SearchViewModel.kt:144:52 Function 'component1()' is ambiguous for this expression: 
+fun <T> Array<out T>.component1(): T
+fun BooleanArray.component1(): Boolean
+fun ByteArray.component1(): Byte
+fun CharArray.component1(): Char
+fun DoubleArray.component1(): Double
+fun FloatArray.component1(): Float
+fun IntArray.component1(): Int
+fun LongArray.component1(): Long
+fun ShortArray.component1(): Short
+fun <T> List<T>.component1(): T
+fun <K, V> Map.Entry<K, V>.component1(): K
+fun UByteArray.component1(): UByte
+fun UIntArray.component1(): UInt
+fun ULongArray.component1(): ULong
+fun UShortArray.component1(): UShort.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/ui/search/SearchViewModel.kt:144:52 Function 'component2()' is ambiguous for this expression: 
+fun <T> Array<out T>.component2(): T
+fun BooleanArray.component2(): Boolean
+fun ByteArray.component2(): Byte
+fun CharArray.component2(): Char
+fun DoubleArray.component2(): Double
+fun FloatArray.component2(): Float
+fun IntArray.component2(): Int
+fun LongArray.component2(): Long
+fun ShortArray.component2(): Short
+fun <T> List<T>.component2(): T
+fun <K, V> Map.Entry<K, V>.component2(): V
+fun UByteArray.component2(): UByte
+fun UIntArray.component2(): UInt
+fun ULongArray.component2(): ULong
+fun UShortArray.component2(): UShort.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/ui/search/SearchViewModel.kt:146:44 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/ui/search/SearchViewModel.kt:146:44 Not enough information to infer type argument for 'T'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/ui/search/SearchViewModel.kt:146:44 Not enough information to infer type argument for 'R'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/ui/search/SearchViewModel.kt:146:50 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/ui/search/SearchViewModel.kt:151:43 Unresolved reference 'getDictionaryById'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/ui/search/SearchViewModel.kt:153:19 Unresolved reference 'distinct'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/ui/search/SearchViewModel.kt:158:36 Assignment type mismatch: actual type is 'kotlinx.coroutines.flow.Flow<ERROR CLASS: Cannot infer argument for type parameter R>', but 'kotlin.collections.List<com.waltermelon.vibedict.ui.search.MergedSearchResult>' was expected.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/ui/settings/DictionaryScreens.kt:290:22 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/ui/settings/DictionaryScreens.kt:290:39 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/ui/settings/DictionaryScreens.kt:290:59 Unresolved reference 'getDictionaryById'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/ui/settings/DictionaryScreens.kt:293:35 Unresolved reference 'webUrl'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/ui/settings/DictionaryScreens.kt:294:34 Unresolved reference 'aiPrompt'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/ui/settings/DictionaryScreens.kt:298:36 Unresolved reference 'name'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/ui/settings/DictionaryScreens.kt:320:59 Unresolved reference 'webUrl'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/ui/settings/DictionaryScreens.kt:321:62 Unresolved reference 'aiPrompt'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/ui/settings/DictionaryScreens.kt:322:62 Unresolved reference 'aiPrompt'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/ui/settings/DictionaryScreens.kt:323:66 Unresolved reference 'aiPrompt'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/ui/settings/DictionaryScreens.kt:332:70 Unresolved reference 'webUrl'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/ui/settings/DictionaryScreens.kt:335:49 Unresolved reference 'aiPrompt'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/ui/settings/DictionaryScreens.kt:336:57 Unresolved reference 'aiPrompt'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/ui/settings/DictionaryScreens.kt:337:61 Unresolved reference 'aiPrompt'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/ui/settings/DictionaryScreens.kt:353:25 Unresolved reference 'aiPrompt'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/ui/settings/DictionaryScreens.kt:353:35 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/ui/settings/DictionaryScreens.kt:353:41 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/ui/settings/DictionaryScreens.kt:355:29 Unresolved reference 'copy'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/ui/settings/DictionaryScreens.kt:385:31 Unresolved reference 'defaultCssContent'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/ui/settings/DictionaryScreens.kt:386:30 Unresolved reference 'defaultJsContent'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/ui/settings/DictionaryScreens.kt:526:48 Unresolved reference 'mddEngines'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/ui/settings/DictionaryScreens.kt:532:52 Unresolved reference 'mdxEngine'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/ui/settings/DictionaryScreens.kt:534:45 Unresolved reference 'mdxEngine'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/ui/settings/SettingsViewModel.kt:396:27 Unresolved reference 'updateWebDictionaries'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/ui/settings/SettingsViewModel.kt:403:27 Unresolved reference 'updateWebDictionaries'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/ui/settings/SettingsViewModel.kt:412:31 Unresolved reference 'updateWebDictionaries'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/ui/settings/SettingsViewModel.kt:456:27 Unresolved reference 'updateAIPromptDictionaries'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/ui/settings/SettingsViewModel.kt:463:27 Unresolved reference 'updateAIPromptDictionaries'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/ui/settings/SettingsViewModel.kt:469:27 Unresolved reference 'updateAIPromptDictionaries'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/ui/wordresults/DefScreen.kt:425:78 Unresolved reference 'getResource'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/ui/wordresults/DefScreen.kt:429:109 Argument type mismatch: actual type is 'kotlin.Any', but 'kotlin.ByteArray!' was expected.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/ui/wordresults/DefScreen.kt:460:75 Unresolved reference 'getResource'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/ui/wordresults/DefScreen.kt:463:64 Argument type mismatch: actual type is 'kotlin.Any', but 'kotlin.ByteArray' was expected.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/ui/wordresults/DefViewModel.kt:65:48 Unresolved reference 'lookupAll'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/ui/wordresults/DefViewModel.kt:75:57 Unresolved reference 'lookupAll'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/ui/wordresults/DefViewModel.kt:99:56 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/ui/wordresults/DefViewModel.kt:99:58 Unresolved reference 'it'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/ui/wordresults/DefViewModel.kt:99:61 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/ui/wordresults/DefViewModel.kt:99:61 Suspension functions can only be called within coroutine body.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/ui/wordresults/DefViewModel.kt:104:32 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/ui/wordresults/DefViewModel.kt:104:34 Unresolved reference 'it'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/ui/wordresults/DefViewModel.kt:104:37 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/ui/wordresults/DefViewModel.kt:104:37 Suspension functions can only be called within coroutine body.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/ui/wordresults/DefViewModel.kt:116:65 Destructuring of type 'kotlin.text.MatchGroup' requires operator function 'component3()'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/ui/wordresults/DefViewModel.kt:123:54 Unresolved reference 'getDictionaryById'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/ui/wordresults/DefViewModel.kt:126:29 Unresolved reference 'not' for operator '!'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/ui/wordresults/DefViewModel.kt:151:53 Unresolved reference 'getDictionaryById'.
+e: file:///H:/bin/ALL/Vibedict-main/app/src/main/java/com/waltermelon/vibedict/ui/wordresults/DefViewModel.kt:161:42 Argument type mismatch: actual type is 'kotlin.Any', but 'kotlin.String' was expected.
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:compileDebugKotlin'.
+> A failure occurred while executing org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction
+   > Compilation error. See log for more details
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 2s
+38 actionable tasks: 9 executed, 29 up-to-date
