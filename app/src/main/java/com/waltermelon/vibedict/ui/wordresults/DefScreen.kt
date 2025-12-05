@@ -203,7 +203,8 @@ fun DefScreen(
                                 DictionaryHeaderItem(
                                     title = entry.dictionaryName,
                                     isExpanded = isExpanded,
-                                    onToggle = { expandedStates[entry.dictionaryName] = !isExpanded }
+                                    onToggle = { expandedStates[entry.dictionaryName] = !isExpanded },
+                                    isLoading = entry.isLoading
                                 )
                             }
                             item(key = "content_${entry.dictionaryName}") {
@@ -293,6 +294,7 @@ fun FindInPageBar(
 fun DictionaryHeaderItem(
     title: String,
     isExpanded: Boolean,
+    isLoading: Boolean = false,
     onToggle: () -> Unit
 ) {
     Surface(
@@ -302,23 +304,31 @@ fun DictionaryHeaderItem(
             .shadow(elevation = 2.dp),
         color = MaterialTheme.colorScheme.background
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                modifier = Modifier.weight(1f),
-                color = MaterialTheme.colorScheme.primary
-            )
-            Icon(
-                imageVector = Icons.Outlined.ExpandMore,
-                contentDescription = stringResource(R.string.expand),
-                modifier = Modifier.rotate(if (isExpanded) 180f else 0f)
-            )
+        Column {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    modifier = Modifier.weight(1f),
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Icon(
+                    imageVector = Icons.Outlined.ExpandMore,
+                    contentDescription = stringResource(R.string.expand),
+                    modifier = Modifier.rotate(if (isExpanded) 180f else 0f)
+                )
+            }
+            if (isLoading && !isExpanded) {
+                LinearProgressIndicator(
+                    modifier = Modifier.fillMaxWidth().height(4.dp),
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
         }
     }
 }

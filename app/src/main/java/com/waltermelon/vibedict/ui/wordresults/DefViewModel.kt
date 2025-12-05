@@ -85,7 +85,8 @@ class DefViewModel(
                      definitionContent = "",
                      customCss = "",
                      customJs = "",
-                     isExpandedByDefault = true, 
+
+                     isExpandedByDefault = currentCollection?.autoExpandIds?.contains(dict.id) == true, 
                      forceOriginalStyle = false,
                      isLoading = true // MARK AS LOADING
                  )
