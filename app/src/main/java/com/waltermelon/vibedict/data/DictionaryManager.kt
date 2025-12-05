@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 import java.io.FileDescriptor
 import java.security.MessageDigest
+import android.util.Log
 
 object DictionaryManager {
     val loadedDictionaries = mutableListOf<LoadedDictionary>()
@@ -76,17 +77,16 @@ object DictionaryManager {
         }
     }
 
-    // --- Helper: Recursive File Listing ---
-    private fun recursiveListFiles(dir: DocumentFile): List<DocumentFile> {
+    // --- Helper: Non-Recursive File Listing ---
+    private fun listFiles(dir: DocumentFile): List<DocumentFile> {
         val allFiles = mutableListOf<DocumentFile>()
         val files = dir.listFiles()
         for (file in files) {
             // Exclude hidden files/directories (starting with .)
             if (file.name?.startsWith(".") == true) continue
 
-            if (file.isDirectory) {
-                allFiles.addAll(recursiveListFiles(file))
-            } else if (file.name != null) {
+            // Only add files, ignore directories (Non-Recursive)
+            if (!file.isDirectory && file.name != null) {
                 allFiles.add(file)
             }
         }
@@ -102,6 +102,9 @@ object DictionaryManager {
     ) = withContext(Dispatchers.IO) {
         _isLoading.value = true
         try {
+            // Load Cache
+            DictionaryCacheManager.loadCache(context)
+
             // Save providers for later use in lookup
             loadedProviders = llmProviders
 
@@ -142,127 +145,189 @@ object DictionaryManager {
                 )
             }
 
-            // 2. Load Local Dictionaries
-            folderUris.forEach { uriString ->
-                try {
-                    val uri = Uri.parse(uriString)
-                    val dir = DocumentFile.fromTreeUri(context, uri)
+            // 2. Load Local Dictionaries (PARALLELIZED)
+            
+            // 2. Load Local Dictionaries (PARALLELIZED & STRICT PAIRING)
+            
+            // Step A: Process each folder independently
+            val loadedLocalDicts = folderUris.map { uriString ->
+                async {
+                    try {
+                        val uri = Uri.parse(uriString)
+                        val dir = DocumentFile.fromTreeUri(context, uri)
+                        if (dir != null && dir.canRead()) {
+                            // 1. Get files in THIS folder only (Non-Recursive)
+                            val filesInFolder = listFiles(dir)
 
-                    if (dir != null && dir.canRead()) {
-                        val allFiles = recursiveListFiles(dir) // RECURSIVE SCAN
-                        val baseNameRegex = "(\\.\\d+)?\\.(mdx|mdd|css)$".toRegex(RegexOption.IGNORE_CASE)
+                            // 2. Group by dictionary name
+                            val baseNameRegex = "(\\.\\d+)?\\.(mdx|mdd|css)$".toRegex(RegexOption.IGNORE_CASE)
+                            val fileGroups = filesInFolder.groupBy { it.name!!.replace(baseNameRegex, "") }
 
-                        val fileGroups = allFiles
-                            .groupBy { it.name!!.replace(baseNameRegex, "") }
-
-                        fileGroups.forEach { (baseName, files) ->
-                            var mdxEngine: MdictEngine? = null
-                            var mdxPath: String? = null
-                            var dictId = "" // Will be the Hash
-                            var cssContent = ""
-                            var jsContent = ""
-
-                            val mddEngines = mutableListOf<MdictEngine>()
-                            val mddPaths = mutableListOf<String>()
-
-                            // Process MDX
-                            val mdxFile = files.find { it.name!!.endsWith(".mdx", ignoreCase = true) }
-                            if (mdxFile != null) {
+                            // 3. Process groups
+                            fileGroups.mapNotNull { (baseName, files) ->
                                 try {
-                                    val pfd = context.contentResolver.openFileDescriptor(mdxFile.uri, "r")
-                                    if (pfd != null) {
-                                        // --- COMPUTE HASH ---
-                                        // Use the FileDescriptor object for hashing
-                                        val fdObj = pfd.fileDescriptor
-                                        dictId = computeFileHash(fdObj)
-                                        // --------------------
+                                    var mdxEngine: MdictEngine? = null
+                                    var mdxPath: String? = null
+                                    var dictId = "" // Will be the Hash
+                                    var cssContent = ""
+                                    var jsContent = ""
 
-                                        // Detach FD for MdictEngine (which takes ownership/int)
-                                        val fdInt = pfd.detachFd()
-                                        
-                                        val engine = MdictEngine()
-                                        if (engine.loadDictionaryFd(fdInt, false)) {
-                                            mdxEngine = engine
-                                            mdxPath = mdxFile.uri.toString() // Store URI as path for reference
-                                        } else {
-                                            engine.close()
+                                    val mddEngines = mutableListOf<MdictEngine>()
+                                    val mddPaths = mutableListOf<String>()
+
+                                    // Process MDX
+                                    val mdxFile = files.find { it.name!!.endsWith(".mdx", ignoreCase = true) }
+                                    if (mdxFile != null) {
+                                        try {
+                                            // --- CACHE CHECK ---
+                                            val fileUri = mdxFile.uri.toString()
+                                            val fileSize = mdxFile.length()
+                                            val lastModified = mdxFile.lastModified()
+                                            val cachedEntry = DictionaryCacheManager.getEntry(fileUri)
+
+                                            if (cachedEntry != null &&
+                                                cachedEntry.size == fileSize &&
+                                                cachedEntry.lastModified == lastModified
+                                            ) {
+                                                // Cache Hit
+                                                dictId = cachedEntry.hash
+                                                val pfd = context.contentResolver.openFileDescriptor(mdxFile.uri, "r")
+                                                if (pfd != null) {
+                                                    val fdInt = pfd.detachFd()
+                                                    val engine = MdictEngine()
+                                                    if (engine.loadDictionaryFd(fdInt, false)) {
+                                                        mdxEngine = engine
+                                                        mdxPath = fileUri
+                                                    } else {
+                                                        engine.close()
+                                                    }
+                                                }
+                                            } else {
+                                                // Cache Miss
+                                                val pfd = context.contentResolver.openFileDescriptor(mdxFile.uri, "r")
+                                                if (pfd != null) {
+                                                    // --- COMPUTE HASH ---
+                                                    val fdObj = pfd.fileDescriptor
+                                                    dictId = computeFileHash(fdObj)
+                                                    // --------------------
+
+                                                    // Update Cache
+                                                    DictionaryCacheManager.putEntry(
+                                                        DictionaryCacheManager.CacheEntry(
+                                                            uri = fileUri,
+                                                            size = fileSize,
+                                                            lastModified = lastModified,
+                                                            hash = dictId,
+                                                            name = baseName
+                                                        )
+                                                    )
+
+                                                    val fdInt = pfd.detachFd()
+                                                    val engine = MdictEngine()
+                                                    if (engine.loadDictionaryFd(fdInt, false)) {
+                                                        mdxEngine = engine
+                                                        mdxPath = fileUri
+                                                    } else {
+                                                        engine.close()
+                                                    }
+                                                }
+                                            }
+                                        } catch (e: Exception) { e.printStackTrace() }
+                                    }
+
+                                    // Process MDD
+                                    val mddFiles = files.filter { it.name!!.endsWith(".mdd", ignoreCase = true) }
+                                    mddFiles.forEach { mddFile ->
+                                        try {
+                                            val pfd = context.contentResolver.openFileDescriptor(mddFile.uri, "r")
+                                            if (pfd != null) {
+                                                val fd = pfd.detachFd()
+                                                val engine = MdictEngine()
+                                                if (engine.loadDictionaryFd(fd, true)) {
+                                                    mddEngines.add(engine)
+                                                    mddPaths.add(mddFile.uri.toString())
+                                                } else {
+                                                    engine.close()
+                                                }
+                                            }
+                                        } catch (e: Exception) { e.printStackTrace() }
+                                    }
+
+                                    // Process CSS
+                                    val cssFile = files.find { it.name!!.endsWith(".css", ignoreCase = true) }
+                                    if (cssFile != null) {
+                                        try {
+                                            context.contentResolver.openInputStream(cssFile.uri)?.use { inputStream ->
+                                                cssContent = inputStream.bufferedReader().readText()
+                                            }
+                                        } catch (e: Exception) { e.printStackTrace() }
+                                    }
+
+                                    // Process JS
+                                    val jsFile = files.find { it.name!!.endsWith(".js", ignoreCase = true) }
+                                    if (jsFile != null) {
+                                        try {
+                                            context.contentResolver.openInputStream(jsFile.uri)?.use { inputStream ->
+                                                jsContent = inputStream.bufferedReader().readText()
+                                            }
+                                        } catch (e: Exception) { e.printStackTrace() }
+                                    }
+
+                                    if (mdxEngine != null || mddEngines.isNotEmpty()) {
+                                        // Fallback ID if MDX is missing
+                                        if (dictId.isEmpty()) {
+                                            dictId = mddFiles.firstOrNull()?.uri.toString() ?: "unknown_${System.currentTimeMillis()}"
                                         }
-                                    }
-                                } catch (e: Exception) { e.printStackTrace() }
-                            }
 
-                            // Process MDD
-                            val mddFiles = files.filter { it.name!!.endsWith(".mdd", ignoreCase = true) }
-                            mddFiles.forEach { mddFile ->
-                                try {
-                                    val pfd = context.contentResolver.openFileDescriptor(mddFile.uri, "r")
-                                    if (pfd != null) {
-                                        val fd = pfd.detachFd()
-                                        val engine = MdictEngine()
-                                        if (engine.loadDictionaryFd(fd, true)) {
-                                            mddEngines.add(engine)
-                                            mddPaths.add(mddFile.uri.toString())
-                                        } else {
-                                            engine.close()
-                                        }
+                                        LoadedDictionary(
+                                            id = dictId,
+                                            name = baseName,
+                                            mdxEngine = mdxEngine,
+                                            mddEngines = mddEngines,
+                                            mdxPath = mdxPath,
+                                            mddPaths = mddPaths,
+                                            defaultCssContent = cssContent,
+                                            defaultJsContent = jsContent
+                                        )
+                                    } else {
+                                        null
                                     }
-                                } catch (e: Exception) { e.printStackTrace() }
-                            }
-
-                            // Process CSS
-                            val cssFile = files.find { it.name!!.endsWith(".css", ignoreCase = true) }
-                            if (cssFile != null) {
-                                try {
-                                    context.contentResolver.openInputStream(cssFile.uri)?.use { inputStream ->
-                                        cssContent = inputStream.bufferedReader().readText()
-                                    }
-                                } catch (e: Exception) { e.printStackTrace() }
-                            }
-
-                            // Process JS
-                            val jsFile = files.find { it.name!!.endsWith(".js", ignoreCase = true) }
-                            if (jsFile != null) {
-                                try {
-                                    context.contentResolver.openInputStream(jsFile.uri)?.use { inputStream ->
-                                        jsContent = inputStream.bufferedReader().readText()
-                                    }
-                                } catch (e: Exception) { e.printStackTrace() }
-                            }
-
-                            if (mdxEngine != null || mddEngines.isNotEmpty()) {
-                                // Fallback ID if MDX is missing (unlikely for a valid dict)
-                                if (dictId.isEmpty()) {
-                                    dictId = mddFiles.firstOrNull()?.uri.toString() ?: "unknown_${System.currentTimeMillis()}"
+                                } catch (e: Exception) {
+                                    e.printStackTrace()
+                                    null
                                 }
-
-                                // --- FIX: Ensure Unique ID ---
-                                var uniqueId = dictId
-                                var dupCounter = 1
-                                while (loadedDictionaries.any { it.id == uniqueId }) {
-                                    uniqueId = "${dictId}_dup_$dupCounter"
-                                    dupCounter++
-                                }
-                                // -----------------------------
-
-                                loadedDictionaries.add(
-                                    LoadedDictionary(
-                                        id = uniqueId, // NOW USING UNIQUE HASH
-                                        name = baseName,
-                                        mdxEngine = mdxEngine,
-                                        mddEngines = mddEngines,
-                                        mdxPath = mdxPath,
-                                        mddPaths = mddPaths,
-                                        defaultCssContent = cssContent,
-                                        defaultJsContent = jsContent
-                                    )
-                                )
                             }
+                        } else {
+                            emptyList()
                         }
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                        emptyList<LoadedDictionary>()
                     }
-                } catch (e: Exception) {
-                    e.printStackTrace()
+                }
+            }.awaitAll().flatten()
+
+            // --- NEW: Prune Cache (Simplified for now, can be improved) ---
+            // Since we don't have a flat list of all files upfront anymore, we can skip aggressive pruning
+            // or do it based on the loaded dictionaries.
+            val validMdxUris = loadedLocalDicts.mapNotNull { it.mdxPath }.toSet()
+            DictionaryCacheManager.prune(validMdxUris)
+            // ------------------------
+
+            // Step D: Add to main list (checking for duplicates)
+            loadedLocalDicts.forEach { dict ->
+                if (loadedDictionaries.none { it.id == dict.id }) {
+                    loadedDictionaries.add(dict)
+                } else {
+                    // Duplicate found, close resources
+                    dict.mdxEngine?.close()
+                    dict.mddEngines.forEach { it.close() }
                 }
             }
+            
+            // Save Cache
+            DictionaryCacheManager.saveCache(context)
+
         } catch (e: Exception) {
             e.printStackTrace()
         } finally {
@@ -414,6 +479,8 @@ object DictionaryManager {
     }
 
     fun getResourceByKey(key: String): ByteArray? {
+        Log.d("DictionaryManager", "getResourceByKey: $key")
+        // Fallback for legacy calls or if ID is unknown (though we should avoid this)
         val variations = listOf(
             "\\" + key.replace('/', '\\'),
             key.replace('/', '\\'),
@@ -430,8 +497,36 @@ object DictionaryManager {
                     if (hexDataList.isNotEmpty()) {
                         val hexData = hexDataList.first()
                         if (hexData.isNotBlank()) {
+                            Log.d("DictionaryManager", "Found resource for key: $key (variation: $v)")
                             return HexUtils.hexStringToByteArray(hexData)
                         }
+                    }
+                }
+            }
+        }
+        return null
+    }
+
+    // --- NEW: Scoped Resource Lookup ---
+    fun getResource(dictId: String, key: String): ByteArray? {
+        Log.d("DictionaryManager", "getResource: dictId=$dictId, key=$key")
+        val dict = loadedDictionaries.find { it.id == dictId } ?: return null
+
+        val variations = listOf(
+            "\\" + key.replace('/', '\\'),
+            key.replace('/', '\\'),
+            "\\" + key.substringAfterLast('/'),
+            key.substringAfterLast('/')
+        ).distinct()
+
+        for (v in variations) {
+            dict.mddEngines.forEach { engine ->
+                val hexDataList = engine.lookup(v)
+                if (hexDataList.isNotEmpty()) {
+                    val hexData = hexDataList.first()
+                    if (hexData.isNotBlank()) {
+                        Log.d("DictionaryManager", "Found resource for key: $key (variation: $v) in dict: ${dict.name}")
+                        return HexUtils.hexStringToByteArray(hexData)
                     }
                 }
             }

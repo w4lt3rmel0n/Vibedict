@@ -19,6 +19,7 @@ class MdictEngine : Closeable {
      * @param path Absolute file path to the dictionary.
      * @return True if loaded successfully, False otherwise.
      */
+    @Synchronized
     fun loadDictionary(path: String): Boolean {
         // If a dictionary is already loaded, close it first to prevent memory leaks
         if (dictionaryHandle != 0L) {
@@ -33,6 +34,7 @@ class MdictEngine : Closeable {
      * @param fd The file descriptor.
      * @param isMdd True if this is an MDD file, False for MDX.
      */
+    @Synchronized
     fun loadDictionaryFd(fd: Int, isMdd: Boolean): Boolean {
         if (dictionaryHandle != 0L) {
             close()
@@ -48,6 +50,7 @@ class MdictEngine : Closeable {
      * @param word The word to search for.
      * @return A list of HTML content definitions, or empty list if not found.
      */
+    @Synchronized
     fun lookup(word: String): List<String> {
         if (dictionaryHandle == 0L) return emptyList()
         return lookupNative(dictionaryHandle, word)?.toList() ?: emptyList()
@@ -56,6 +59,7 @@ class MdictEngine : Closeable {
     /**
      * Cleans up C++ memory. Call this when the dictionary is no longer needed.
      */
+    @Synchronized
     override fun close() {
         if (dictionaryHandle != 0L) {
             destroyNative(dictionaryHandle)
@@ -63,6 +67,7 @@ class MdictEngine : Closeable {
         }
     }
 
+    @Synchronized
     fun getSuggestions(prefix: String): List<String> {
         if (dictionaryHandle == 0L) return emptyList()
         // Call the new native function
@@ -83,16 +88,19 @@ class MdictEngine : Closeable {
     private external fun getRegexSuggestionsNative(dictHandle: Long, regex: String): Array<String>?
     private external fun getFullTextSuggestionsNative(dictHandle: Long, query: String, listener: ProgressListener?): Array<String>?
     
+    @Synchronized
     fun getMatchCount(word: String): Int {
         if (dictionaryHandle == 0L) return 0
         return getMatchCountNative(dictionaryHandle, word)
     }
 
+    @Synchronized
     fun getRegexSuggestions(regex: String): List<String> {
         if (dictionaryHandle == 0L) return emptyList()
         return getRegexSuggestionsNative(dictionaryHandle, regex)?.toList() ?: emptyList()
     }
 
+    @Synchronized
     fun getFullTextSuggestions(query: String, listener: ProgressListener? = null): List<String> {
         if (dictionaryHandle == 0L) return emptyList()
         val results = getFullTextSuggestionsNative(dictionaryHandle, query, listener)

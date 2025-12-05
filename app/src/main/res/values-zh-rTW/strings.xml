@@ -36,6 +36,7 @@
     <string name="pref_interface">介面</string>
     <string name="pref_dictionaries">字典</string>
     <string name="pref_data">資料</string>
+    <string name="pref_sys">其他</string>
 
     <string name="pref_language">語言</string>
     <string name="pref_dark_mode">深色模式</string>

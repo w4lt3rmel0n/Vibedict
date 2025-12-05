@@ -47,6 +47,7 @@ import java.io.FileInputStream
 data class FindNavEvent(val forward: Boolean, val timestamp: Long = System.currentTimeMillis())
 
 data class DictionaryEntry(
+    val id: String, // --- NEW: ID for scoped lookup ---
     val dictionaryName: String,
     val iconRes: Int? = null,
     val definitionContent: String,
@@ -207,6 +208,7 @@ fun DefScreen(
                             item(key = "content_${entry.dictionaryName}") {
                                 DictionaryBodyItem(
                                     navController = navController,
+                                    dictId = entry.id, // --- PASS ID ---
                                     content = entry.definitionContent,
                                     customCss = entry.customCss,
                                     customJs = entry.customJs,
@@ -322,6 +324,7 @@ fun DictionaryHeaderItem(
 @Composable
 fun DictionaryBodyItem(
     navController: NavController,
+    dictId: String, // --- NEW ---
     content: String,
     customCss: String,
     customJs: String,
@@ -349,6 +352,7 @@ fun DictionaryBodyItem(
             "spx" -> "audio/ogg"
             "mp3" -> "audio/mpeg"
             "css", "stylesheet" -> "text/css"
+            "js" -> "application/javascript"
             "ttf" -> "font/ttf"
             "otf" -> "font/otf"
             else -> "application/octet-stream"
@@ -417,7 +421,9 @@ fun DictionaryBodyItem(
                                 if (resourceKey.isNotEmpty()) {
                                     try {
                                         val decodedKey = java.net.URLDecoder.decode(resourceKey, "UTF-8")
-                                        val resourceData = DictionaryManager.getResourceByKey(decodedKey)
+                                        // --- FIX: Use Scoped Lookup ---
+                                        val resourceData = DictionaryManager.getResource(dictId, decodedKey)
+                                        // ------------------------------
                                         if (resourceData != null) {
                                             val mimeType = getMimeType(decodedKey)
                                             return WebResourceResponse(mimeType, null, ByteArrayInputStream(resourceData))
@@ -450,7 +456,8 @@ fun DictionaryBodyItem(
                                     }
 
                                     coroutineScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-                                        val audioData = DictionaryManager.getResourceByKey(java.net.URLDecoder.decode(resourceKey, "UTF-8"))
+                                        // --- FIX: Use Scoped Lookup for Sound too ---
+                                        val audioData = DictionaryManager.getResource(dictId, java.net.URLDecoder.decode(resourceKey, "UTF-8"))
                                         if (audioData != null) {
                                             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                                                 playSound(ctx, audioData)
@@ -544,7 +551,11 @@ fun DictionaryBodyItem(
                             } else { "" }
                             // ----------------------
 
-                            val finalCss = "$customCss\n$transparencyCss\n$darkModeCss\n$fontCss"
+                            // Sanitize CSS and JS to remove any tags that might be present in the source files
+                            val sanitizedCustomCss = customCss.replace("</?style[^>]*>".toRegex(RegexOption.IGNORE_CASE), "")
+                            val sanitizedCustomJs = customJs.replace("</?script[^>]*>".toRegex(RegexOption.IGNORE_CASE), "")
+
+                            val finalCss = "$sanitizedCustomCss\n$transparencyCss\n$darkModeCss\n$fontCss"
 
                             val linkFixerJs = """
                                 <script>
@@ -560,7 +571,7 @@ fun DictionaryBodyItem(
                                 </script>
                             """.trimIndent()
 
-                            val finalHtml = "<html><head><style>$finalCss</style></head><body>$content<script>$customJs</script>$linkFixerJs</body></html>"
+                            val finalHtml = "<html><head><style>$finalCss</style></head><body>$content<script>$sanitizedCustomJs</script>$linkFixerJs</body></html>"
 
                             webView.loadDataWithBaseURL(
                                 "https://waltermelon.app/",

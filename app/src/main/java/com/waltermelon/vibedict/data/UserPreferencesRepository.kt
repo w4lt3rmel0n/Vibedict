@@ -368,6 +368,13 @@ class UserPreferencesRepository(private val context: Context) {
         it[getFontPathsKey(dictId)] ?: ""
     }
 
+    // --- NEW: Efficiently get display names for a list of IDs ---
+    fun getDisplayNames(ids: List<String>): Flow<Map<String, String>> = dataStore.data.map { prefs ->
+        ids.associateWith { id ->
+            prefs[getNameKey(id)] ?: ""
+        }
+    }
+
     suspend fun setDictionaryCss(dictId: String, css: String) = dataStore.edit {
         if (css.isEmpty()) {
             it.remove(getCssKey(dictId))
@@ -540,5 +547,29 @@ class UserPreferencesRepository(private val context: Context) {
             array.put(obj)
         }
         return array.toString()
+    }
+    // --- NEW: Sync Collections with Loaded Dictionaries ---
+    suspend fun retainDictionaryIdsInCollections(validIds: Set<String>) = dataStore.edit { prefs ->
+        val currentList = parseCollections(prefs[Keys.COLLECTIONS]).toMutableList()
+        var hasChanges = false
+
+        val updatedList = currentList.map { collection ->
+            // Filter the IDs to only those that are valid (currently loaded)
+            val newDictIds = collection.dictionaryIds.filter { it in validIds }
+            
+            // Also filter autoExpandIds
+            val newExpandIds = collection.autoExpandIds.filter { it in validIds }
+
+            if (newDictIds.size != collection.dictionaryIds.size || newExpandIds.size != collection.autoExpandIds.size) {
+                hasChanges = true
+                collection.copy(dictionaryIds = newDictIds, autoExpandIds = newExpandIds)
+            } else {
+                collection
+            }
+        }
+
+        if (hasChanges) {
+            prefs[Keys.COLLECTIONS] = serializeCollections(updatedList)
+        }
     }
 }

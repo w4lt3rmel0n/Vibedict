@@ -134,24 +134,22 @@ class SearchViewModel(private val repository: UserPreferencesRepository) : ViewM
             )
 
             // 5. Get display names and map to final MergedSearchResult
+            
+            // Collect all unique dictionary IDs involved in the results
+            val allDictIds = groupedByWord.values.flatten().distinct()
+            
+            // Fetch custom names for these IDs
+            val customNamesMap = repository.getDisplayNames(allDictIds).first()
+
             val finalResults = groupedByWord.map { (word, dictIds) ->
                 // Get the unique display names for this word
                 val displayNames = dictIds.map { id ->
-                    // We need to get dictionary name. 
-                    // Note: repository.getDictionaryName returns a Flow. 
-                    // Since we are in a suspend function, we can't easily collect flows for each item efficiently here without complexity.
-                    // However, DictionaryManager has the loaded dictionaries.
-                    // The repository flow `getDictionaryName` likely just checks preferences for custom names.
-                    // For now, let's use DictionaryManager's name as primary, or maybe we can fetch custom names if needed.
-                    // But `repository.getDictionaryName` is a flow.
-                    // Let's stick to DictionaryManager for now to avoid N+1 flow collections.
-                    // Or we can assume custom names are not heavily used yet or we can optimize later.
-                    // Wait, the original code used `repository.getDictionaryName(id).first()`.
-                    // That is okay for a few items but bad for a list.
-                    // But `groupedByWord` could be large.
-                    // Let's look at `repository.getDictionaryName`.
-                    
-                    DictionaryManager.getDictionaryById(id)?.name ?: "Unknown"
+                    val customName = customNamesMap[id]
+                    if (!customName.isNullOrBlank()) {
+                        customName
+                    } else {
+                        DictionaryManager.getDictionaryById(id)?.name ?: "Unknown"
+                    }
                 }.distinct()
 
                 MergedSearchResult(word, displayNames)

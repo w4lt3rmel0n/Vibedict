@@ -157,6 +157,7 @@ class DefViewModel(
                     val finalJs = if (customJs.isNotBlank()) customJs else fileJs
 
                     DictionaryEntry(
+                        id = dictId, // --- PASS ID ---
                         dictionaryName = finalName,
                         iconRes = null,
                         definitionContent = finalContent, // Use the resolved content

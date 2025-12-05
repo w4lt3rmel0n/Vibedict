@@ -291,7 +291,7 @@ private fun DataSettingsCard(
     onRestoreClick: () -> Unit
 ) {
     val context = LocalContext.current
-    SettingsCard(title = stringResource(R.string.pref_data)) {
+    SettingsCard(title = stringResource(R.string.pref_sys)) {
         SettingsRow(
             icon = Icons.Outlined.OpenInNew,
             title = stringResource(R.string.pref_app_info),
