@@ -20,6 +20,7 @@
 #include <stdexcept>
 #include <utility>
 #include <cctype>
+#include <cstdio>
 #include <android/log.h>
 
 #include "encode/char_decoder.h"
@@ -803,6 +804,20 @@ namespace mdict {
                                        utf8_bytes_written);
                 free(utf16le_bytes);
                 free(utf8_output);
+
+                // --- DEBUG LOGGING ---
+                static int debug_key_count = 0;
+                if (debug_key_count < 5) {
+                    std::string hex_debug;
+                    char buf[4];
+                    for (unsigned char c : key_text) {
+                        snprintf(buf, sizeof(buf), "%02X", c);
+                        hex_debug += buf;
+                    }
+                    LOGD("Loaded Key [%d]: '%s' (Hex: %s)", debug_key_count, key_text.c_str(), hex_debug.c_str());
+                    debug_key_count++;
+                }
+                // ---------------------
 
             } else if (this->encoding == 0 /* ENCODING_UTF8 */) {
                 key_text = be_bin_to_utf8(
@@ -1712,14 +1727,33 @@ namespace mdict {
 
     std::string Mdict::locate(const std::string resource_name,
                               mdict_encoding_t encoding) {
+        // --- DEBUG LOGGING ---
+        std::string hex_debug;
+        char buf[4];
+        for (unsigned char c : resource_name) {
+            snprintf(buf, sizeof(buf), "%02X", c);
+            hex_debug += buf;
+        }
+        LOGD("Mdict::locate: '%s' (Hex: %s)", resource_name.c_str(), hex_debug.c_str());
+        // ---------------------
         // find key item in key list
+        // FIX: Case-insensitive search
         auto it = std::find_if(this->key_list.begin(), this->key_list.end(),
                                [&](const key_list_item *item) {
-                                   return item->key_word == resource_name;
+                                   std::string k = item->key_word;
+                                   std::string r = resource_name;
+                                   // simple case-insensitive comparison
+                                   if (k.length() != r.length()) return false;
+                                   for (size_t i = 0; i < k.length(); ++i) {
+                                       if (tolower(static_cast<unsigned char>(k[i])) != tolower(static_cast<unsigned char>(r[i]))) return false;
+                                   }
+                                   return true;
                                });
         if (it != this->key_list.end()) {
             std::string key_word = (*it)->key_word;
-            if (key_word == resource_name) {
+            // if (key_word == resource_name) { // Removed exact check
+            {
+                LOGD("Mdict::locate: Found match for %s (Key: %s)", resource_name.c_str(), key_word.c_str());
                 if ((*it)->record_start >= 0) {
                     // reduce search the record block index by word record start offset
                     unsigned long record_block_idx =
@@ -1743,9 +1777,28 @@ namespace mdict {
                                 treated_output); // Return base64 encoded string
                     }
                 }
+                LOGD("Mdict::locate: Found key but record_start < 0 for %s", resource_name.c_str());
                 return std::string("");
             }
         }
+        LOGD("Mdict::locate: Key not found for %s", resource_name.c_str());
+        
+        // --- DIAGNOSTIC LOGGING ---
+        LOGD("Mdict::locate: key_list size: %zu", this->key_list.size());
+        if (!this->key_list.empty()) {
+            for (size_t i = 0; i < std::min((size_t)3, this->key_list.size()); ++i) {
+                std::string k = this->key_list[i]->key_word;
+                std::string h;
+                char b[4];
+                for (unsigned char c : k) {
+                    snprintf(b, sizeof(b), "%02X", c);
+                    h += b;
+                }
+                LOGD("Mdict::locate: Key[%zu]: '%s' (Hex: %s)", i, k.c_str(), h.c_str());
+            }
+        }
+        // --------------------------
+
         return std::string("");
     }
 

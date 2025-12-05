@@ -43,9 +43,16 @@ val titleTag = TextStyle(
 )
 
 // Set of Material typography styles (remains mostly the same)
+val defaultTypography = Typography()
 val Typography = Typography(
-    // We are no longer using this for "Initial set", but it's
-    // good to keep for other parts of the app.
+    displayLarge = defaultTypography.displayLarge.copy(fontFamily = RobotoFlex),
+    displayMedium = defaultTypography.displayMedium.copy(fontFamily = RobotoFlex),
+    displaySmall = defaultTypography.displaySmall.copy(fontFamily = RobotoFlex),
+
+    headlineLarge = defaultTypography.headlineLarge.copy(fontFamily = RobotoFlex),
+    headlineMedium = defaultTypography.headlineMedium.copy(fontFamily = RobotoFlex),
+    headlineSmall = defaultTypography.headlineSmall.copy(fontFamily = RobotoFlex),
+
     titleLarge = TextStyle(
         fontFamily = RobotoFlex,
         fontWeight = FontWeight.Normal,
@@ -53,6 +60,9 @@ val Typography = Typography(
         lineHeight = 28.sp,
         letterSpacing = 0.sp
     ),
+    titleMedium = defaultTypography.titleMedium.copy(fontFamily = RobotoFlex),
+    titleSmall = defaultTypography.titleSmall.copy(fontFamily = RobotoFlex),
+
     bodyLarge = TextStyle(
         fontFamily = RobotoFlex,
         fontWeight = FontWeight.Normal,
@@ -66,5 +76,10 @@ val Typography = Typography(
         fontSize = 16.sp,
         lineHeight = 24.sp,
         letterSpacing = 0.5.sp
-    )
+    ),
+    bodySmall = defaultTypography.bodySmall.copy(fontFamily = RobotoFlex),
+
+    labelLarge = defaultTypography.labelLarge.copy(fontFamily = RobotoFlex),
+    labelMedium = defaultTypography.labelMedium.copy(fontFamily = RobotoFlex),
+    labelSmall = defaultTypography.labelSmall.copy(fontFamily = RobotoFlex)
 )

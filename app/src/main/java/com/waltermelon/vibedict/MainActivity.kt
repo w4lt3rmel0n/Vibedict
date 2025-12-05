@@ -80,7 +80,7 @@ import kotlinx.coroutines.launch
 
 import androidx.compose.runtime.DisposableEffect
 import androidx.lifecycle.lifecycleScope
-import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 

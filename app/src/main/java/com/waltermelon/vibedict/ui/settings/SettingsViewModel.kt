@@ -210,6 +210,11 @@ class SettingsViewModel(private val repository: UserPreferencesRepository) : Vie
         val providers = repository.llmProviders.first()
 
         DictionaryManager.reloadDictionaries(context, dirs, engines, prompts, providers)
+
+        // FIX: Sync collections to remove "ghost" dictionaries
+        // We get the list of valid IDs *after* the reload is complete
+        val validIds = DictionaryManager.loadedDictionaries.map { it.id }.toSet()
+        repository.retainDictionaryIdsInCollections(validIds)
     }
 
     fun reloadAllDictionaries(context: Context) = viewModelScope.launch {

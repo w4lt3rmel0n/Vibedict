@@ -9,6 +9,7 @@ import androidx.compose.material.icons.outlined.ArrowDropDown
 import androidx.compose.material.icons.outlined.Bookmarks
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -149,79 +150,53 @@ fun MainScreen(
             ) {
                 SearchBarContent()
             }
-        }
 
-        // --- UPDATED: Bottom Toggles in One Card ---
-        Card(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .padding(start = 20.dp, end = 20.dp, bottom = 50.dp),
-            shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant
-            )
-        ) {
-            Column(
-                modifier = Modifier.fillMaxWidth()
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // --- NEW: Filter Pills ---
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                // 1. Full Text Toggle
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        text = stringResource(R.string.search_full_text),
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            fontFamily = RobotoFlex,
-                            // CONDITIONAL: Bold if active, Normal if inactive
-                            fontWeight = if (isFullText) FontWeight.Bold else FontWeight.Normal
-                        ),
-                        // CONDITIONAL: High Emphasis (Black) if active, Medium Emphasis (Grey) if inactive
-                        color = if (isFullText) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
+                // 1. Fulltext Filter
+                FilterChip(
+                    selected = isFullText,
+                    onClick = { coroutineScope.launch { repository.setFullText(!isFullText) } },
+                    label = { Text(stringResource(R.string.search_full_text)) },
+                    leadingIcon = if (isFullText) {
+                        { Icon(imageVector = Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                    } else null,
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.height(32.dp),
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                        selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
                     )
-                    Switch(
-                        checked = isFullText,
-                        onCheckedChange = { coroutineScope.launch { repository.setFullText(it) } },
-                        modifier = Modifier.scale(1.0f)
-                    )
-                }
-
-                // Divider
-                HorizontalDivider(
-                    modifier = Modifier.padding(horizontal = 12.dp),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f)
                 )
 
-                // 2. Regex Toggle
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        text = stringResource(R.string.regex),
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            fontFamily = RobotoFlex,
-                            // CONDITIONAL: Bold if active, Normal if inactive
-                            fontWeight = if (isRegexEnabled) FontWeight.Bold else FontWeight.Normal
-                        ),
-                        // CONDITIONAL: High Emphasis (Black) if active, Medium Emphasis (Grey) if inactive
-                        color = if (isRegexEnabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
+                Spacer(modifier = Modifier.width(8.dp))
+
+                // 2. Regex Filter
+                FilterChip(
+                    selected = isRegexEnabled,
+                    onClick = { coroutineScope.launch { repository.setRegexEnabled(!isRegexEnabled) } },
+                    label = { Text(stringResource(R.string.regex)) },
+                    leadingIcon = if (isRegexEnabled) {
+                        { Icon(imageVector = Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                    } else null,
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.height(32.dp),
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                        selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
                     )
-                    Switch(
-                        checked = isRegexEnabled,
-                        onCheckedChange = { coroutineScope.launch { repository.setRegexEnabled(it) } },
-                        modifier = Modifier.scale(1.0f)
-                    )
-                }
+                )
             }
+            // -------------------------
         }
+
+
     }
 }
 
