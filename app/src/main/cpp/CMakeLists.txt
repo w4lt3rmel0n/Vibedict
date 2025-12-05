@@ -5,7 +5,7 @@ project("waltermelon-native")
 # --- CRITICAL FIX 1: Force Scalar Mode Globally ---
 # This tells the preprocessor: "Whenever you see tb64dec, replace it with tb64sdec"
 # We use add_compile_definitions so it applies to EVERYTHING.
-add_compile_definitions(TBASE64_NO_SIMD)
+add_compile_definitions(TBASE64_NO_SIMD _FILE_OFFSET_BITS=64)
 # -------------------------------------------------
 
 add_library(

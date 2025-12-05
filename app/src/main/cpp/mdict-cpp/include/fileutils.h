@@ -18,11 +18,13 @@
  * @param fpath Path to the file to measure
  * @return int The size of the file in bytes, or -1 if the file cannot be opened
  */
-inline static int fsizeof(const char* fpath) {
+inline static int64_t fsizeof(const char* fpath) {
   FILE* f = std::fopen(fpath, "rb");
-  std::fseek(f, 0, SEEK_END);  // seek to end of file
-  auto size = std::ftell(f);   // get current file pointer
-  std::fseek(f, 0, SEEK_SET);  // seek back to beginning of file
+  if (!f) return -1;
+  // Use fseeko/ftello for 64-bit offset support (with _FILE_OFFSET_BITS=64)
+  fseeko(f, 0, SEEK_END);
+  int64_t size = ftello(f);
+  fseeko(f, 0, SEEK_SET);
   std::fclose(f);
   return size;
 }
