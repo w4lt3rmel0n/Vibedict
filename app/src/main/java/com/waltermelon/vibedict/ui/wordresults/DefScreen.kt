@@ -46,7 +46,7 @@ import java.io.FileInputStream
 // Helper to force "Next" clicks to be recognized as distinct events
 data class FindNavEvent(val forward: Boolean, val timestamp: Long = System.currentTimeMillis())
 
-data class DictionaryEntry(
+    data class DictionaryEntry(
     val id: String, // --- NEW: ID for scoped lookup ---
     val dictionaryName: String,
     val iconRes: Int? = null,
@@ -55,7 +55,8 @@ data class DictionaryEntry(
     val customJs: String,
     val isExpandedByDefault: Boolean,
     val forceOriginalStyle: Boolean,
-    val customFontPaths: String = ""
+    val customFontPaths: String = "",
+    val isLoading: Boolean = false // --- NEW: Individual Loading State ---
 )
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
@@ -181,7 +182,7 @@ fun DefScreen(
         ) {
             when (val state = uiState) {
                 is DefUiState.Loading -> {
-                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                    // Removed global loading
                 }
                 is DefUiState.Empty -> {
                     Column(
@@ -216,7 +217,8 @@ fun DefScreen(
                                     forceOriginalStyle = entry.forceOriginalStyle,
                                     customFontPaths = entry.customFontPaths,
                                     findQuery = findQuery,
-                                    findNavEvent = findNavEvent
+                                    findNavEvent = findNavEvent,
+                                    isLoading = entry.isLoading // --- PASS LOADING STATE ---
                                 )
                             }
                         }
@@ -332,7 +334,8 @@ fun DictionaryBodyItem(
     forceOriginalStyle: Boolean = false,
     customFontPaths: String = "",
     findQuery: String = "",
-    findNavEvent: FindNavEvent? = null
+    findNavEvent: FindNavEvent? = null,
+    isLoading: Boolean = false // --- NEW ---
 ) {
     val coroutineScope = rememberCoroutineScope()
 
@@ -368,238 +371,249 @@ fun DictionaryBodyItem(
             modifier = Modifier.fillMaxWidth(),
             color = Color.Transparent
         ) {
-            AndroidView(
-                factory = { ctx ->
-                    AdBlocker.init(ctx)
+            if (isLoading) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(100.dp), // Fixed height for loading state
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+            } else {
+                AndroidView(
+                    factory = { ctx ->
+                        AdBlocker.init(ctx)
 
-                    CustomWebView(ctx).apply {
-                        onDefineRequested = { selectedText ->
-                            navController.navigate(Screen.createRouteForWord(selectedText))
-                        }
-                        @android.annotation.SuppressLint("SetJavaScriptEnabled")
-                        settings.javaScriptEnabled = true
-                        settings.domStorageEnabled = true
-                        setBackgroundColor(0x00000000)
-                        isVerticalScrollBarEnabled = false
-
-                        webViewClient = object : WebViewClient() {
-
-                            override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {
-                                val url = request?.url?.toString() ?: ""
-
-                                // --- A. Serve Local Fonts ---
-                                if (url.startsWith("https://waltermelon.app/fonts/")) {
-                                    val requestedFileName = url.substringAfter("https://waltermelon.app/fonts/")
-                                     try {
-                                        val fontFile = File(ctx.filesDir, "fonts/$requestedFileName")
-                                        if (fontFile.exists()) {
-                                            // Use getMimeType to support .otf as well
-                                            val mime = getMimeType(requestedFileName)
-                                            return WebResourceResponse(mime, "UTF-8", FileInputStream(fontFile))
-                                        }
-                                    } catch (e: Exception) {
-                                        e.printStackTrace()
-                                    }
-                                }
-
-                                // B. Serve MDD Resources
-                                var resourceKey = ""
-                                if (url.startsWith("entry://")) {
-                                    resourceKey = url.substringAfter("entry://")
-                                } else if (url.startsWith("https://waltermelon.app/")) {
-                                    if (url != "https://waltermelon.app/") {
-                                        resourceKey = url.substringAfter("https://waltermelon.app/")
-                                    }
-                                } else if (url.startsWith("content://")) {
-                                    resourceKey = if (url.startsWith("content://mdict.cn/")) {
-                                        url.substringAfter("content://mdict.cn/")
-                                    } else {
-                                        url.substringAfter("content://")
-                                    }
-                                }
-
-                                if (resourceKey.isNotEmpty()) {
-                                    try {
-                                        val decodedKey = java.net.URLDecoder.decode(resourceKey, "UTF-8")
-                                        // --- FIX: Use Scoped Lookup ---
-                                        val resourceData = DictionaryManager.getResource(dictId, decodedKey)
-                                        // ------------------------------
-                                        if (resourceData != null) {
-                                            val mimeType = getMimeType(decodedKey)
-                                            return WebResourceResponse(mimeType, null, ByteArrayInputStream(resourceData))
-                                        }
-                                    } catch (e: Exception) {
-                                        e.printStackTrace()
-                                    }
-                                }
-
-                                // C. AdBlocker
-                                if (AdBlocker.isAd(url)) {
-                                    return WebResourceResponse("text/plain", "UTF-8", ByteArrayInputStream(ByteArray(0)))
-                                }
-
-                                return super.shouldInterceptRequest(view, request)
+                        CustomWebView(ctx).apply {
+                            onDefineRequested = { selectedText ->
+                                navController.navigate(Screen.createRouteForWord(selectedText))
                             }
+                            @android.annotation.SuppressLint("SetJavaScriptEnabled")
+                            settings.javaScriptEnabled = true
+                            settings.domStorageEnabled = true
+                            setBackgroundColor(0x00000000)
+                            isVerticalScrollBarEnabled = false
 
-                            override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
-                                val url = request?.url?.toString() ?: ""
+                            webViewClient = object : WebViewClient() {
 
-                                val isSound = url.startsWith("sound://") ||
-                                        (url.startsWith("content://") && (url.endsWith(".mp3") || url.endsWith(".wav") || url.endsWith(".spx")))
+                                override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {
+                                    val url = request?.url?.toString() ?: ""
 
-                                if (isSound) {
-                                    val resourceKey = when {
-                                        url.startsWith("sound://") -> url.substringAfter("sound://")
-                                        url.startsWith("content://mdict.cn/") -> url.substringAfter("content://mdict.cn/")
-                                        url.startsWith("content://") -> url.substringAfter("content://")
-                                        else -> url
+                                    // --- A. Serve Local Fonts ---
+                                    if (url.startsWith("https://waltermelon.app/fonts/")) {
+                                        val requestedFileName = url.substringAfter("https://waltermelon.app/fonts/")
+                                         try {
+                                            val fontFile = File(ctx.filesDir, "fonts/$requestedFileName")
+                                            if (fontFile.exists()) {
+                                                // Use getMimeType to support .otf as well
+                                                val mime = getMimeType(requestedFileName)
+                                                return WebResourceResponse(mime, "UTF-8", FileInputStream(fontFile))
+                                            }
+                                        } catch (e: Exception) {
+                                            e.printStackTrace()
+                                        }
                                     }
 
-                                    coroutineScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-                                        // --- FIX: Use Scoped Lookup for Sound too ---
-                                        val audioData = DictionaryManager.getResource(dictId, java.net.URLDecoder.decode(resourceKey, "UTF-8"))
-                                        if (audioData != null) {
-                                            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                                                playSound(ctx, audioData)
+                                    // B. Serve MDD Resources
+                                    var resourceKey = ""
+                                    if (url.startsWith("entry://")) {
+                                        resourceKey = url.substringAfter("entry://")
+                                    } else if (url.startsWith("https://waltermelon.app/")) {
+                                        if (url != "https://waltermelon.app/") {
+                                            resourceKey = url.substringAfter("https://waltermelon.app/")
+                                        }
+                                    } else if (url.startsWith("content://")) {
+                                        resourceKey = if (url.startsWith("content://mdict.cn/")) {
+                                            url.substringAfter("content://mdict.cn/")
+                                        } else {
+                                            url.substringAfter("content://")
+                                        }
+                                    }
+
+                                    if (resourceKey.isNotEmpty()) {
+                                        try {
+                                            val decodedKey = java.net.URLDecoder.decode(resourceKey, "UTF-8")
+                                            // --- FIX: Use Scoped Lookup ---
+                                            val resourceData = DictionaryManager.getResource(dictId, decodedKey)
+                                            // ------------------------------
+                                            if (resourceData != null) {
+                                                val mimeType = getMimeType(decodedKey)
+                                                return WebResourceResponse(mimeType, null, ByteArrayInputStream(resourceData))
+                                            }
+                                        } catch (e: Exception) {
+                                            e.printStackTrace()
+                                        }
+                                    }
+
+                                    // C. AdBlocker
+                                    if (AdBlocker.isAd(url)) {
+                                        return WebResourceResponse("text/plain", "UTF-8", ByteArrayInputStream(ByteArray(0)))
+                                    }
+
+                                    return super.shouldInterceptRequest(view, request)
+                                }
+
+                                override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
+                                    val url = request?.url?.toString() ?: ""
+
+                                    val isSound = url.startsWith("sound://") ||
+                                            (url.startsWith("content://") && (url.endsWith(".mp3") || url.endsWith(".wav") || url.endsWith(".spx")))
+
+                                    if (isSound) {
+                                        val resourceKey = when {
+                                            url.startsWith("sound://") -> url.substringAfter("sound://")
+                                            url.startsWith("content://mdict.cn/") -> url.substringAfter("content://mdict.cn/")
+                                            url.startsWith("content://") -> url.substringAfter("content://")
+                                            else -> url
+                                        }
+
+                                        coroutineScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                                            // --- FIX: Use Scoped Lookup for Sound too ---
+                                            val audioData = DictionaryManager.getResource(dictId, java.net.URLDecoder.decode(resourceKey, "UTF-8"))
+                                            if (audioData != null) {
+                                                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                                                    playSound(ctx, audioData)
+                                                }
                                             }
                                         }
+                                        return true
                                     }
-                                    return true
-                                }
 
-                                val entryWord = if (url.startsWith("entry://")) {
-                                    url.substringAfter("entry://")
-                                } else if (url.startsWith("content://") && "/entry/" in url) {
-                                    url.substringAfterLast("/")
-                                } else {
-                                    null
-                                }
-
-                                if (entryWord != null) {
-                                    try {
-                                        val decoded = java.net.URLDecoder.decode(entryWord, "UTF-8")
-                                        navController.navigate(Screen.createRouteForWord(decoded))
-                                    } catch (e: Exception) {
-                                        e.printStackTrace()
+                                    val entryWord = if (url.startsWith("entry://")) {
+                                        url.substringAfter("entry://")
+                                    } else if (url.startsWith("content://") && "/entry/" in url) {
+                                        url.substringAfterLast("/")
+                                    } else {
+                                        null
                                     }
-                                    return true
+
+                                    if (entryWord != null) {
+                                        try {
+                                            val decoded = java.net.URLDecoder.decode(entryWord, "UTF-8")
+                                            navController.navigate(Screen.createRouteForWord(decoded))
+                                        } catch (e: Exception) {
+                                            e.printStackTrace()
+                                        }
+                                        return true
+                                    }
+
+                                    return super.shouldOverrideUrlLoading(view, request)
                                 }
 
-                                return super.shouldOverrideUrlLoading(view, request)
-                            }
+                                override fun onPageFinished(view: WebView?, url: String?) {
+                                    super.onPageFinished(view, url)
 
-                            override fun onPageFinished(view: WebView?, url: String?) {
-                                super.onPageFinished(view, url)
-
-                                if (url != null && url != "https://waltermelon.app/") {
-                                    val adCss = AdBlocker.COSMETIC_CSS.replace("\n", " ")
-                                    view?.evaluateJavascript("""
-                                    var style = document.createElement('style');
-                                    style.innerHTML = "$adCss";
-                                    document.head.appendChild(style);
-                                    """, null)
-
-                                    if (isDarkTheme && !forceOriginalStyle) {
+                                    if (url != null && url != "https://waltermelon.app/") {
+                                        val adCss = AdBlocker.COSMETIC_CSS.replace("\n", " ")
                                         view?.evaluateJavascript("""
                                         var style = document.createElement('style');
-                                        style.innerHTML = 'html { filter: invert(1) hue-rotate(180deg); } img, video { filter: invert(1) hue-rotate(180deg); }';
+                                        style.innerHTML = "$adCss";
                                         document.head.appendChild(style);
                                         """, null)
+
+                                        if (isDarkTheme && !forceOriginalStyle) {
+                                            view?.evaluateJavascript("""
+                                            var style = document.createElement('style');
+                                            style.innerHTML = 'html { filter: invert(1) hue-rotate(180deg); } img, video { filter: invert(1) hue-rotate(180deg); }';
+                                            document.head.appendChild(style);
+                                            """, null)
+                                        }
                                     }
                                 }
                             }
                         }
-                    }
-                },
-                update = { webView ->
-                    // --- UPDATE LOGIC ---
+                    },
+                    update = { webView ->
+                        // --- UPDATE LOGIC ---
 
-                    if (content.startsWith("@@WEB_URL@@")) {
-                        val targetUrl = content.removePrefix("@@WEB_URL@@")
-                        if (webView.url != targetUrl) {
-                            webView.loadUrl(targetUrl)
+                        if (content.startsWith("@@WEB_URL@@")) {
+                            val targetUrl = content.removePrefix("@@WEB_URL@@")
+                            if (webView.url != targetUrl) {
+                                webView.loadUrl(targetUrl)
+                            }
                         }
-                    }
-                    else {
-                        val isDisplayingLocalContent = webView.url == "https://waltermelon.app/"
+                        else {
+                            val isDisplayingLocalContent = webView.url == "https://waltermelon.app/"
 
-                        if (!isDisplayingLocalContent) {
-                            val transparencyCss = "html, body { background-color: transparent !important; }"
+                            if (!isDisplayingLocalContent) {
+                                val transparencyCss = "html, body { background-color: transparent !important; }"
 
-                            val darkModeCss = if (isDarkTheme && !forceOriginalStyle) {
-                                """
-                                html { filter: invert(1) hue-rotate(180deg); }
-                                img, video, iframe, .handwriting_img, .wordsource_img { filter: invert(1) hue-rotate(180deg); }
-                                """.trimIndent()
-                            } else { "" }
-
-                            // --- FONT INJECTION ---
-                            val fontCss = if (customFontPaths.isNotEmpty()) {
-                                val fontList = customFontPaths.split(",").filter { it.isNotBlank() }
-                                val fontFaceDeclarations = fontList.joinToString("\n") { path ->
-                                    val fontFileName = path.substringAfterLast('/')
-                                    val fontFamilyName = fontFileName.substringBeforeLast('.')
+                                val darkModeCss = if (isDarkTheme && !forceOriginalStyle) {
                                     """
-                                    @font-face {
-                                        font-family: '$fontFamilyName';
-                                        src: url('https://waltermelon.app/fonts/$fontFileName');
-                                    }
-                                    """
-                                }
-                                val firstFontFamily = fontList.firstOrNull()?.substringAfterLast('/')?.substringBeforeLast('.') ?: ""
-                                "$fontFaceDeclarations\nbody { font-family: '$firstFontFamily', sans-serif !important; }"
-                            } else { "" }
-                            // ----------------------
+                                    html { filter: invert(1) hue-rotate(180deg); }
+                                    img, video, iframe, .handwriting_img, .wordsource_img { filter: invert(1) hue-rotate(180deg); }
+                                    """.trimIndent()
+                                } else { "" }
 
-                            // Sanitize CSS and JS to remove any tags that might be present in the source files
-                            val sanitizedCustomCss = customCss.replace("</?style[^>]*>".toRegex(RegexOption.IGNORE_CASE), "")
-                            val sanitizedCustomJs = customJs.replace("</?script[^>]*>".toRegex(RegexOption.IGNORE_CASE), "")
-
-                            val finalCss = "$sanitizedCustomCss\n$transparencyCss\n$darkModeCss\n$fontCss"
-
-                            val linkFixerJs = """
-                                <script>
-                                try {
-                                    var links = document.getElementsByTagName('a');
-                                    for (var i = 0; i < links.length; i++) {
-                                        var href = links[i].getAttribute('href');
-                                        if (href && (href.startsWith('content://') || href.startsWith('entry://')) && href.includes(' ')) {
-                                            links[i].href = href.replace(/ /g, '%20');
+                                // --- FONT INJECTION ---
+                                val fontCss = if (customFontPaths.isNotEmpty()) {
+                                    val fontList = customFontPaths.split(",").filter { it.isNotBlank() }
+                                    val fontFaceDeclarations = fontList.joinToString("\n") { path ->
+                                        val fontFileName = path.substringAfterLast('/')
+                                        val fontFamilyName = fontFileName.substringBeforeLast('.')
+                                        """
+                                        @font-face {
+                                            font-family: '$fontFamilyName';
+                                            src: url('https://waltermelon.app/fonts/$fontFileName');
                                         }
+                                        """
                                     }
-                                } catch (e) { console.error('Link fixer script failed', e); }
-                                </script>
-                            """.trimIndent()
+                                    val firstFontFamily = fontList.firstOrNull()?.substringAfterLast('/')?.substringBeforeLast('.') ?: ""
+                                    "$fontFaceDeclarations\nbody { font-family: '$firstFontFamily', sans-serif !important; }"
+                                } else { "" }
+                                // ----------------------
 
-                            val finalHtml = "<html><head><style>$finalCss</style></head><body>$content<script>$sanitizedCustomJs</script>$linkFixerJs</body></html>"
+                                // Sanitize CSS and JS to remove any tags that might be present in the source files
+                                val sanitizedCustomCss = customCss.replace("</?style[^>]*>".toRegex(RegexOption.IGNORE_CASE), "")
+                                val sanitizedCustomJs = customJs.replace("</?script[^>]*>".toRegex(RegexOption.IGNORE_CASE), "")
 
-                            webView.loadDataWithBaseURL(
-                                "https://waltermelon.app/",
-                                finalHtml,
-                                "text/html",
-                                "UTF-8",
-                                null
-                            )
+                                val finalCss = "$sanitizedCustomCss\n$transparencyCss\n$darkModeCss\n$fontCss"
+
+                                val linkFixerJs = """
+                                    <script>
+                                    try {
+                                        var links = document.getElementsByTagName('a');
+                                        for (var i = 0; i < links.length; i++) {
+                                            var href = links[i].getAttribute('href');
+                                            if (href && (href.startsWith('content://') || href.startsWith('entry://')) && href.includes(' ')) {
+                                                links[i].href = href.replace(/ /g, '%20');
+                                            }
+                                        }
+                                    } catch (e) { console.error('Link fixer script failed', e); }
+                                    </script>
+                                """.trimIndent()
+
+                                val finalHtml = "<html><head><style>$finalCss</style></head><body>$content<script>$sanitizedCustomJs</script>$linkFixerJs</body></html>"
+
+                                webView.loadDataWithBaseURL(
+                                    "https://waltermelon.app/",
+                                    finalHtml,
+                                    "text/html",
+                                    "UTF-8",
+                                    null
+                                )
+                            }
                         }
-                    }
 
-                    val lastQuery = webView.getTag(androidx.compose.ui.R.id.compose_view_saveable_id_tag) as? String
-                    if (findQuery != lastQuery) {
-                        if (findQuery.isNotEmpty()) {
-                            webView.findAllAsync(findQuery)
-                        } else {
-                            webView.clearMatches()
+                        val lastQuery = webView.getTag(R.id.webview_search_query_tag) as? String
+                        if (findQuery != lastQuery) {
+                            if (findQuery.isNotEmpty()) {
+                                webView.findAllAsync(findQuery)
+                            } else {
+                                webView.clearMatches()
+                            }
+                            webView.setTag(R.id.webview_search_query_tag, findQuery)
                         }
-                        webView.setTag(androidx.compose.ui.R.id.compose_view_saveable_id_tag, findQuery)
-                    }
 
-                    if (findNavEvent != null && findNavEvent.timestamp != lastProcessedNavEvent) {
-                        webView.findNext(findNavEvent.forward)
-                        lastProcessedNavEvent = findNavEvent.timestamp
-                    }
-                },
-                modifier = Modifier.fillMaxWidth().wrapContentHeight()
-            )
+                        if (findNavEvent != null && findNavEvent.timestamp != lastProcessedNavEvent) {
+                            webView.findNext(findNavEvent.forward)
+                            lastProcessedNavEvent = findNavEvent.timestamp
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth().wrapContentHeight()
+                )
+            }
         }
     }
     if (isVisible) {

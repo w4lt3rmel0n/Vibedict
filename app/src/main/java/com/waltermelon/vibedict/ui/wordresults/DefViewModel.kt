@@ -49,136 +49,158 @@ class DefViewModel(
         }
     }
 
+    private val _resultsMutex = kotlinx.coroutines.sync.Mutex()
+
     private fun searchWord(query: String) {
         viewModelScope.launch {
             Log.e("MdictJNI", "!!! DefViewModel: searchWord coroutine STARTED for query '$query'.")
-            _uiState.value = DefUiState.Loading
-
-            // --- UPDATED: Get active collection and filter results ---
-            // 1. Get Current Active Collection
+            
+            // 1. Get Active Dictionaries & Filter IDs
             val activeId = repository.activeCollectionId.first()
             val collections = repository.collections.first()
             val currentCollection = collections.find { it.id == activeId }
-            val filterIds = currentCollection?.dictionaryIds // This list is NOW ORDERED
-
-            // 2. Get all results
-            var rawResults = DictionaryManager.lookupAll(query) // Use 'var'
-            var finalQuery = query
-
-            // --- NEW: FALLBACK LOGIC ---
-            if (rawResults.isEmpty()) {
-                Log.e("MdictJNI", "!!! DefViewModel: Query '$query' empty. Attempting fallback...")
-                val baseWord = query.split(" ").firstOrNull()
-
-                // Check if baseWord is valid and different from the original query
-                if (baseWord != null && baseWord != query) {
-                    val baseResults = DictionaryManager.lookupAll(baseWord)
-
-                    if (baseResults.isNotEmpty()) {
-                        Log.e("MdictJNI", "!!! DefViewModel: Fallback SUCCESS. Found '$baseWord'. Triggering nav.")
-                        // Success! We found the base word.
-                        _navigateToWord.value = baseWord
-
-                        // --- FIX: Set state to Empty to stop the Loading spinner ---
-                        _uiState.value = DefUiState.Empty
-
-                        // We stop this coroutine because a new ViewModel
-                        // will be created for the new word.
-                        return@launch
-                    }
-                }
-
-                // If fallback failed (or wasn't possible), proceed to "Empty" state
-                Log.w("DefViewModel", "Fallback failed for query: '$query'. Setting state to Empty.")
-                _uiState.value = DefUiState.Empty
-                return@launch
-            }
-            // --------------------------------
-
-            // --- NEW: Create a Map for fast lookups ---
-            val allResultsMap = rawResults.associateBy { it.first } // Map<ID, Triple>
-
-            // 3. Determine the FINAL ordered list of IDs
-            val orderedIds = if (filterIds == null || filterIds.isEmpty()) {
-                // "All" collection: Use the default order from rawResults
-                rawResults.map { it.first }
+            val filterIds = currentCollection?.dictionaryIds
+            
+            // Get all available dictionaries (loaded in memory)
+            val allLoadedDicts = DictionaryManager.loadedDictionaries
+            
+            // Determine which dictionaries to show
+            val targetDicts = if (filterIds.isNullOrEmpty()) {
+                allLoadedDicts
             } else {
-                // Custom collection: Use the ordered list from filterIds
-                filterIds
+                // Filter and order based on collection
+                filterIds.mapNotNull { id -> allLoadedDicts.find { it.id == id } }
             }
-            // ---------------------------------------------------------
 
-            // 4. Create entries by iterating over the ORDERED list
-            val entries = orderedIds.mapNotNull { id ->
-                val result = allResultsMap[id]
-                // Only create an entry if a result exists for this ID
-                if (result != null) {
-                    val (dictId, defaultName, initialContent) = result
+            if (targetDicts.isEmpty()) {
+                 _uiState.value = DefUiState.Empty
+                 return@launch
+            }
 
-                    // --- Handle @@@LINK= Redirection ---
-                    var finalContent = initialContent
-                    var redirectCount = 0
-                    while (finalContent.trim().startsWith("@@@LINK=") && redirectCount < 5) {
-                        val targetWord = finalContent.trim().substringAfter("@@@LINK=").trim()
-                        val dict = DictionaryManager.getDictionaryById(id)
-                        val newContentList = dict?.mdxEngine?.lookup(targetWord)
-
-                        if (!newContentList.isNullOrEmpty()) {
-                            // Take the first result and combine if there are multiple
-                            finalContent = newContentList.joinToString("<hr>")
-                        } else {
-                            break
-                        }
-                        redirectCount++
-                    }
-                    // ----------------------------------------
-
-                    // 2. Fetch overrides from Repository
-                    val customName = repository.getDictionaryName(id).first()
-                    val customCss = repository.getDictionaryCss(id).first()
-                    val customJs = repository.getDictionaryJs(id).first()
-                    val customFontPaths = repository.getDictionaryFontPaths(id).first()
-
-                    // --- UPDATED: Get expand/style rules ---
-                    val isExpanded = id in (currentCollection?.autoExpandIds ?: emptyList())
-                    val forceOriginal = repository.getDictionaryForceStyle(id).first()
-                    // ----------------------------------------
-
-                    // 3. Determine Final Name
-                    val finalName = if (customName.isNotBlank()) customName else defaultName
-
-                    // 4. Determine Final CSS
-                    val dictObj = DictionaryManager.getDictionaryById(id)
-
+            // 2. Initialize UI State with Loading Placeholders
+            val initialEntries = targetDicts.map { dict ->
+                 DictionaryEntry(
+                     id = dict.id,
+                     dictionaryName = dict.name, 
+                     definitionContent = "",
+                     customCss = "",
+                     customJs = "",
+                     isExpandedByDefault = true, 
+                     forceOriginalStyle = false,
+                     isLoading = true // MARK AS LOADING
+                 )
+            }
+            
+            _uiState.value = DefUiState.Success(initialEntries)
+            
+            // 3. Launch Individual Lookups
+            val total = initialEntries.size
+            var completedCount = 0
+            var foundAny = false
+            
+            initialEntries.forEach { entry ->
+                launch {
+                    // Fetch Preferences
+                    val customName = repository.getDictionaryName(entry.id).first()
+                    val customCss = repository.getDictionaryCss(entry.id).first()
+                    val customJs = repository.getDictionaryJs(entry.id).first()
+                    val customFontPaths = repository.getDictionaryFontPaths(entry.id).first()
+                    val isExpanded = entry.id in (currentCollection?.autoExpandIds ?: emptyList())
+                    val forceOriginal = repository.getDictionaryForceStyle(entry.id).first()
+                    
+                    val dictObj = DictionaryManager.getDictionaryById(entry.id)
                     val fileCss = dictObj?.defaultCssContent ?: ""
                     val finalCss = if (customCss.isNotBlank()) customCss else fileCss
-
                     val fileJs = dictObj?.defaultJsContent ?: ""
                     val finalJs = if (customJs.isNotBlank()) customJs else fileJs
+                    val finalName = if (customName.isNotBlank()) customName else entry.dictionaryName
 
-                    DictionaryEntry(
-                        id = dictId, // --- PASS ID ---
-                        dictionaryName = finalName,
-                        iconRes = null,
-                        definitionContent = finalContent, // Use the resolved content
-                        customCss = finalCss,
-                        customJs = finalJs,
-                        isExpandedByDefault = isExpanded, // Use collection's rule
-                        forceOriginalStyle = forceOriginal,
-                        customFontPaths = customFontPaths
-                    )
-                } else {
-                    null // This ID was in the collection but had no result for the word
+                    // Perform Lookup
+                    val content = DictionaryManager.lookup(entry.id, query)
+                    
+                    // Update State
+                    _resultsMutex.lock()
+                    try {
+                        val currentState = _uiState.value
+                        if (currentState is DefUiState.Success) {
+                            val currentList = currentState.results.toMutableList()
+                            val index = currentList.indexOfFirst { it.id == entry.id }
+                            
+                            if (index != -1) {
+                                if (content != null) {
+                                    // --- Handle @@@LINK= Redirection ---
+                                    var finalContent: String = content
+                                    var redirectCount = 0
+                                    while (finalContent.trim().startsWith("@@@LINK=") && redirectCount < 5) {
+                                        val targetWord = finalContent.trim().substringAfter("@@@LINK=").trim()
+                                        val dict = DictionaryManager.getDictionaryById(entry.id)
+                                        val newContentList = dict?.mdxEngine?.lookup(targetWord)
+
+                                        if (!newContentList.isNullOrEmpty()) {
+                                            finalContent = newContentList.joinToString("<hr>")
+                                        } else {
+                                            break
+                                        }
+                                        redirectCount++
+                                    }
+                                    // ----------------------------------------
+
+                                    currentList[index] = currentList[index].copy(
+                                        dictionaryName = finalName,
+                                        definitionContent = finalContent,
+                                        customCss = finalCss,
+                                        customJs = finalJs,
+                                        isExpandedByDefault = isExpanded,
+                                        forceOriginalStyle = forceOriginal,
+                                        customFontPaths = customFontPaths,
+                                        isLoading = false
+                                    )
+                                    foundAny = true
+                                } else {
+                                    // Remove if no result
+                                    currentList.removeAt(index)
+                                }
+                                
+                                if (currentList.isEmpty() && completedCount == total - 1) {
+                                     // Will be handled in the completion check below
+                                     _uiState.value = DefUiState.Success(emptyList()) // Temporary empty list
+                                } else {
+                                     _uiState.value = DefUiState.Success(currentList)
+                                }
+                            }
+                        }
+                        
+                        completedCount++
+                        if (completedCount == total) {
+                            if (!foundAny) {
+                                // --- FALLBACK LOGIC ---
+                                Log.e("MdictJNI", "!!! DefViewModel: Query '$query' empty. Attempting fallback...")
+                                val baseWord = query.split(" ").firstOrNull()
+
+                                if (baseWord != null && baseWord != query) {
+                                    // We need to check if baseWord has results. 
+                                    // Since we are inside a coroutine, we can't easily call searchWord again without resetting everything.
+                                    // But we can just check quickly.
+                                    val baseResults = DictionaryManager.lookupAll(baseWord) // This is blocking/suspend but fine here
+                                    
+                                    if (baseResults.isNotEmpty()) {
+                                        Log.e("MdictJNI", "!!! DefViewModel: Fallback SUCCESS. Found '$baseWord'. Triggering nav.")
+                                        _navigateToWord.value = baseWord
+                                        _uiState.value = DefUiState.Empty
+                                    } else {
+                                        _uiState.value = DefUiState.Empty
+                                    }
+                                } else {
+                                    _uiState.value = DefUiState.Empty
+                                }
+                            } else {
+                                repository.addToHistory(query)
+                            }
+                        }
+                    } finally {
+                        _resultsMutex.unlock()
+                    }
                 }
-            }
-
-            if (entries.isEmpty()) {
-                _uiState.value = DefUiState.Empty
-            } else {
-                // --- NEW: Add to history *after* a successful search ---
-                repository.addToHistory(finalQuery)
-                // ----------------------------------------------------
-                _uiState.value = DefUiState.Success(entries)
             }
         }
     }

@@ -377,102 +377,107 @@ object DictionaryManager {
         loadedDictionaries.clear()
     }
 
-    suspend fun lookupAll(word: String): List<Triple<String, String, String>> = withContext(Dispatchers.IO) {
-        val results = mutableListOf<Triple<String, String, String>>()
-        loadedDictionaries.toList().forEach { dict ->
-            try {
-                if (dict.webUrl != null) {
-                    // Handle Web Search
-                    val url = dict.webUrl.replace("%s", word)
-                    val content = "@@WEB_URL@@$url"
-                    results.add(Triple(dict.id, dict.name, content))
+    suspend fun lookup(dictId: String, word: String): String? = withContext(Dispatchers.IO) {
+        val dict = getDictionaryById(dictId) ?: return@withContext null
+        try {
+            if (dict.webUrl != null) {
+                // Handle Web Search
+                val url = dict.webUrl.replace("%s", word)
+                return@withContext "@@WEB_URL@@$url"
 
-                } else if (dict.aiPrompt != null) {
-                    // --- Handle AI Prompt ---
+            } else if (dict.aiPrompt != null) {
+                // --- Handle AI Prompt ---
 
-                    // 1. Calculate the prompt text by inserting the word
-                    val promptText = dict.aiPrompt.promptTemplate.replace("%s", word)
+                // 1. Calculate the prompt text by inserting the word
+                val promptText = dict.aiPrompt.promptTemplate.replace("%s", word)
 
-                    // 2. Find the matching provider (API Key)
-                    val provider = loadedProviders.find { it.id == dict.aiPrompt.providerId }
+                // 2. Find the matching provider (API Key)
+                val provider = loadedProviders.find { it.id == dict.aiPrompt.providerId }
 
-                    // 3. Perform the API Call
-                    val aiResponse = if (provider != null && provider.apiKey.isNotBlank()) {
-                        try {
-                            // Initialize the Gemini Client
-                            // FIX: Use .trim() to remove accidental spaces from config
-                            val generativeModel = GenerativeModel(
-                                modelName = provider.model.trim(),
-                                apiKey = provider.apiKey.trim()
-                            )
+                // 3. Perform the API Call
+                val aiResponse = if (provider != null && provider.apiKey.isNotBlank()) {
+                    try {
+                        // Initialize the Gemini Client
+                        // FIX: Use .trim() to remove accidental spaces from config
+                        val generativeModel = GenerativeModel(
+                            modelName = provider.model.trim(),
+                            apiKey = provider.apiKey.trim()
+                        )
 
-                            // Make the network call
-                            val response = generativeModel.generateContent(promptText)
-                            response.text ?: "No response generated."
-                        } catch (e: Exception) {
-                            "Error: ${e.localizedMessage}"
-                        }
-                    } else {
-                        "Configuration Error: Provider not found or API Key missing."
+                        // Make the network call
+                        val response = generativeModel.generateContent(promptText)
+                        response.text ?: "No response generated."
+                    } catch (e: Exception) {
+                        "Error: ${e.localizedMessage}"
                     }
-
-                    // 4. Format Output
-                    val finalContent = if (dict.aiPrompt.isHtml) {
-                        // Simple wrapping; add Markdown parsing logic here if desired
-                        "<div class='ai-wrapper'>$aiResponse</div>"
-                    } else {
-                        "<pre>$aiResponse</pre>"
-                    }
-
-                    results.add(Triple(dict.id, dict.name, finalContent))
-
                 } else {
-                    dict.mdxEngine?.let { engine ->
-                        // Helper function to resolve redirects recursively
-                        fun resolve(w: String, depth: Int): List<String> {
-                            if (depth > 5) return emptyList()
-                            val defs = engine.lookup(w)
-                            val finalDefs = mutableListOf<String>()
-                            for (d in defs) {
-                                if (d.startsWith("@@@LINK=")) {
-                                    val target = d.substringAfter("@@@LINK=").trim()
-                                    finalDefs.addAll(resolve(target, depth + 1))
-                                } else {
-                                    finalDefs.add(d)
-                                }
-                            }
-                            return finalDefs
-                        }
+                    "Configuration Error: Provider not found or API Key missing."
+                }
 
-                        val definitions = resolve(word, 0)
-                        if (definitions.isNotEmpty()) {
-                            val finalDefinition = if (definitions.size > 1) {
-                                val safeDictId = dict.id.hashCode()
-                                definitions.mapIndexed { index, def ->
-                                    val sb = StringBuilder()
-                                    sb.append("<div id='entry-${safeDictId}-${index}' style='margin-bottom: 10px;'>")
-                                    sb.append("<div class='entry-nav' style='font-size: 0.85em; color: #666; margin-bottom: 8px; padding: 4px; background-color: #f5f5f5; border-radius: 4px;'>")
-                                    for (i in definitions.indices) {
-                                        if (i == index) {
-                                            sb.append("<span style='font-weight: bold; margin-right: 10px; color: #333;'>Entry ${i + 1}</span>")
-                                        } else {
-                                            sb.append("<a href='#entry-${safeDictId}-${i}' style='margin-right: 10px; text-decoration: none; color: #0066cc;'>Entry ${i + 1}</a>")
-                                        }
-                                    }
-                                    sb.append("</div>")
-                                    sb.append(def)
-                                    sb.append("</div>")
-                                    sb.toString()
-                                }.joinToString("<hr>")
+                // 4. Format Output
+                return@withContext if (dict.aiPrompt.isHtml) {
+                    // Simple wrapping; add Markdown parsing logic here if desired
+                    "<div class='ai-wrapper'>$aiResponse</div>"
+                } else {
+                    "<pre>$aiResponse</pre>"
+                }
+
+            } else {
+                dict.mdxEngine?.let { engine ->
+                    // Helper function to resolve redirects recursively
+                    fun resolve(w: String, depth: Int): List<String> {
+                        if (depth > 5) return emptyList()
+                        val defs = engine.lookup(w)
+                        val finalDefs = mutableListOf<String>()
+                        for (d in defs) {
+                            if (d.startsWith("@@@LINK=")) {
+                                val target = d.substringAfter("@@@LINK=").trim()
+                                finalDefs.addAll(resolve(target, depth + 1))
                             } else {
-                                definitions.first()
+                                finalDefs.add(d)
                             }
-                            results.add(Triple(dict.id, dict.name, finalDefinition))
+                        }
+                        return finalDefs
+                    }
+
+                    val definitions = resolve(word, 0)
+                    if (definitions.isNotEmpty()) {
+                        return@withContext if (definitions.size > 1) {
+                            val safeDictId = dict.id.hashCode()
+                            definitions.mapIndexed { index, def ->
+                                val sb = StringBuilder()
+                                sb.append("<div id='entry-${safeDictId}-${index}' style='margin-bottom: 10px;'>")
+                                sb.append("<div class='entry-nav' style='font-size: 0.85em; color: #666; margin-bottom: 8px; padding: 4px; background-color: #f5f5f5; border-radius: 4px;'>")
+                                for (i in definitions.indices) {
+                                    if (i == index) {
+                                        sb.append("<span style='font-weight: bold; margin-right: 10px; color: #333;'>Entry ${i + 1}</span>")
+                                    } else {
+                                        sb.append("<a href='#entry-${safeDictId}-${i}' style='margin-right: 10px; text-decoration: none; color: #0066cc;'>Entry ${i + 1}</a>")
+                                    }
+                                }
+                                sb.append("</div>")
+                                sb.append(def)
+                                sb.append("</div>")
+                                sb.toString()
+                            }.joinToString("<hr>")
+                        } else {
+                            definitions.first()
                         }
                     }
                 }
-            } catch (e: Exception) {
-                e.printStackTrace()
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        return@withContext null
+    }
+
+    suspend fun lookupAll(word: String): List<Triple<String, String, String>> = withContext(Dispatchers.IO) {
+        val results = mutableListOf<Triple<String, String, String>>()
+        loadedDictionaries.toList().forEach { dict ->
+            val content = lookup(dict.id, word)
+            if (content != null) {
+                results.add(Triple(dict.id, dict.name, content))
             }
         }
         return@withContext results
