@@ -10,9 +10,15 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -50,7 +56,7 @@ data class FindNavEvent(val forward: Boolean, val timestamp: Long = System.curre
     val id: String, // --- NEW: ID for scoped lookup ---
     val dictionaryName: String,
     val iconRes: Int? = null,
-    val definitionContent: String,
+    val entries: List<String>, // --- CHANGED: List of entries ---
     val customCss: String,
     val customJs: String,
     val isExpandedByDefault: Boolean,
@@ -90,6 +96,9 @@ fun DefScreen(
     // -------------------------------
 
     val expandedStates = remember { mutableStateMapOf<String, Boolean>() }
+    // --- NEW: Track selected index for each dictionary ---
+    val selectedIndices = remember { mutableStateMapOf<String, Int>() }
+    
     val results = (uiState as? DefUiState.Success)?.results ?: emptyList()
 
     // Reset find state if results change
@@ -198,20 +207,32 @@ fun DefScreen(
                     LazyColumn(modifier = Modifier.fillMaxSize()) {
                         state.results.forEach { entry ->
                             val isExpanded = expandedStates.getOrDefault(entry.dictionaryName, entry.isExpandedByDefault)
+                            val selectedIndex = selectedIndices.getOrDefault(entry.id, 0) // Use ID for key
 
                             stickyHeader(key = "header_${entry.dictionaryName}") {
                                 DictionaryHeaderItem(
                                     title = entry.dictionaryName,
                                     isExpanded = isExpanded,
                                     onToggle = { expandedStates[entry.dictionaryName] = !isExpanded },
-                                    isLoading = entry.isLoading
+                                    isLoading = entry.isLoading,
+                                    // --- PASS SELECTION DATA ---
+                                    entryCount = entry.entries.size,
+                                    selectedIndex = selectedIndex,
+                                    onSelectEntry = { newIndex -> selectedIndices[entry.id] = newIndex }
                                 )
                             }
                             item(key = "content_${entry.dictionaryName}") {
+                                // Select content based on index, safe guard against OOB
+                                val contentToShow = if (entry.entries.isNotEmpty()) {
+                                    entry.entries.getOrElse(selectedIndex) { entry.entries[0] }
+                                } else {
+                                    ""
+                                }
+
                                 DictionaryBodyItem(
                                     navController = navController,
-                                    dictId = entry.id, // --- PASS ID ---
-                                    content = entry.definitionContent,
+                                    dictId = entry.id,
+                                    content = contentToShow,
                                     customCss = entry.customCss,
                                     customJs = entry.customJs,
                                     isVisible = isExpanded,
@@ -219,7 +240,7 @@ fun DefScreen(
                                     customFontPaths = entry.customFontPaths,
                                     findQuery = findQuery,
                                     findNavEvent = findNavEvent,
-                                    isLoading = entry.isLoading // --- PASS LOADING STATE ---
+                                    isLoading = entry.isLoading
                                 )
                             }
                         }
@@ -229,6 +250,7 @@ fun DefScreen(
         }
     }
 }
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -290,11 +312,15 @@ fun FindInPageBar(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun DictionaryHeaderItem(
     title: String,
     isExpanded: Boolean,
     isLoading: Boolean = false,
+    entryCount: Int = 1,
+    selectedIndex: Int = 0,
+    onSelectEntry: (Int) -> Unit = {},
     onToggle: () -> Unit
 ) {
     Surface(
@@ -304,7 +330,9 @@ fun DictionaryHeaderItem(
             .shadow(elevation = 2.dp),
         color = MaterialTheme.colorScheme.background
     ) {
-        Column {
+        Column(
+            modifier = Modifier.padding(bottom = if (entryCount > 1 && isExpanded) 8.dp else 0.dp)
+        ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -323,6 +351,41 @@ fun DictionaryHeaderItem(
                     modifier = Modifier.rotate(if (isExpanded) 180f else 0f)
                 )
             }
+            
+            // --- ENTRY SELECTION PILLS ---
+            if (entryCount > 1 && isExpanded) {
+                FlowRow(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    repeat(entryCount) { index ->
+                        val isSelected = index == selectedIndex
+                        val color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent
+                        val textColor = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
+                        val border = if (isSelected) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
+                        
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(color)
+                                .then(if (border != null) Modifier.border(border, RoundedCornerShape(8.dp)) else Modifier)
+                                .clickable { onSelectEntry(index) }
+                                .padding(horizontal = 12.dp, vertical = 6.dp)
+                        ) {
+                            Text(
+                                text = "Entry ${index + 1}",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = textColor
+                            )
+                        }
+                    }
+                }
+            }
+            // -----------------------------
+
             if (isLoading && !isExpanded) {
                 LinearProgressIndicator(
                     modifier = Modifier.fillMaxWidth().height(4.dp),

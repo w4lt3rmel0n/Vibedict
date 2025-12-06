@@ -96,7 +96,7 @@ fun LLMProviderConfigScreen(
     var model by remember { mutableStateOf(provider.model) }
     var type by remember { mutableStateOf(provider.type) }
 
-    val providerTypes = listOf("Google", "Mistral", "Groq", "Celebras")
+    val providerTypes = listOf("Google", "Mistral (Experimental)", "Groq (Experimental)", "Celebras (Experimental)")
     var isTypeExpanded by remember { mutableStateOf(false) }
 
     fun update() {

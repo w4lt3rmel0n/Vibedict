@@ -15,6 +15,7 @@
 package com.waltermelon.vibedict
 
 import android.os.Bundle
+import android.view.WindowManager
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.core.EaseInOutCubic
@@ -96,6 +97,15 @@ class MainActivity : androidx.appcompat.app.AppCompatActivity() {
             val currentDarkMode by repository.darkMode.collectAsState(initial = "Follow System")
             val materialColour by repository.materialColour.collectAsState(initial = true)
             val instantSearch by repository.instantSearch.collectAsState(initial = false)
+            val keepScreenOn by repository.keepScreenOn.collectAsState(initial = false)
+
+            LaunchedEffect(keepScreenOn) {
+                if (keepScreenOn) {
+                    window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                } else {
+                    window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                }
+            }
 
 // ... (inside setContent)
 

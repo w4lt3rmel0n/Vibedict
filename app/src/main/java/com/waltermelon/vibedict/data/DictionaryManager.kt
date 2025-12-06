@@ -379,34 +379,25 @@ object DictionaryManager {
         loadedDictionaries.clear()
     }
 
-    suspend fun lookup(dictId: String, word: String): String? = withContext(Dispatchers.IO) {
+    suspend fun lookup(dictId: String, word: String): List<String>? = withContext(Dispatchers.IO) {
         val dict = getDictionaryById(dictId) ?: return@withContext null
         try {
             if (dict.webUrl != null) {
                 // Handle Web Search
                 val url = dict.webUrl.replace("%s", word)
-                return@withContext "@@WEB_URL@@$url"
+                return@withContext listOf("@@WEB_URL@@$url")
 
             } else if (dict.aiPrompt != null) {
                 // --- Handle AI Prompt ---
-
-                // 1. Calculate the prompt text by inserting the word
                 val promptText = dict.aiPrompt.promptTemplate.replace("%s", word)
-
-                // 2. Find the matching provider (API Key)
                 val provider = loadedProviders.find { it.id == dict.aiPrompt.providerId }
 
-                // 3. Perform the API Call
                 val aiResponse = if (provider != null && provider.apiKey.isNotBlank()) {
                     try {
-                        // Initialize the Gemini Client
-                        // FIX: Use .trim() to remove accidental spaces from config
                         val generativeModel = GenerativeModel(
                             modelName = provider.model.trim(),
                             apiKey = provider.apiKey.trim()
                         )
-
-                        // Make the network call
                         val response = generativeModel.generateContent(promptText)
                         response.text ?: "No response generated."
                     } catch (e: Exception) {
@@ -416,13 +407,13 @@ object DictionaryManager {
                     "Configuration Error: Provider not found or API Key missing."
                 }
 
-                // 4. Format Output
-                return@withContext if (dict.aiPrompt.isHtml) {
-                    // Simple wrapping; add Markdown parsing logic here if desired
-                    "<div class='ai-wrapper'>$aiResponse</div>"
-                } else {
-                    "<pre>$aiResponse</pre>"
-                }
+                return@withContext listOf(
+                    if (dict.aiPrompt.isHtml) {
+                        "<div class='ai-wrapper'>$aiResponse</div>"
+                    } else {
+                        "<pre>$aiResponse</pre>"
+                    }
+                )
 
             } else {
                 dict.mdxEngine?.let { engine ->
@@ -444,27 +435,9 @@ object DictionaryManager {
 
                     val definitions = resolve(word, 0)
                     if (definitions.isNotEmpty()) {
-                        return@withContext if (definitions.size > 1) {
-                            val safeDictId = dict.id.hashCode()
-                            definitions.mapIndexed { index, def ->
-                                val sb = StringBuilder()
-                                sb.append("<div id='entry-${safeDictId}-${index}' style='margin-bottom: 10px;'>")
-                                sb.append("<div class='entry-nav' style='font-size: 0.85em; color: #666; margin-bottom: 8px; padding: 4px; background-color: #f5f5f5; border-radius: 4px;'>")
-                                for (i in definitions.indices) {
-                                    if (i == index) {
-                                        sb.append("<span style='font-weight: bold; margin-right: 10px; color: #333;'>Entry ${i + 1}</span>")
-                                    } else {
-                                        sb.append("<a href='#entry-${safeDictId}-${i}' style='margin-right: 10px; text-decoration: none; color: #0066cc;'>Entry ${i + 1}</a>")
-                                    }
-                                }
-                                sb.append("</div>")
-                                sb.append(def)
-                                sb.append("</div>")
-                                sb.toString()
-                            }.joinToString("<hr>")
-                        } else {
-                            definitions.first()
-                        }
+                        // --- DEDUPLICATION & RETURN LIST ---
+                        // Sort by length descending to prioritize "primary" (content-rich) entries
+                        return@withContext definitions.distinct().sortedByDescending { it.length }
                     }
                 }
             }
@@ -474,8 +447,8 @@ object DictionaryManager {
         return@withContext null
     }
 
-    suspend fun lookupAll(word: String): List<Triple<String, String, String>> = withContext(Dispatchers.IO) {
-        val results = mutableListOf<Triple<String, String, String>>()
+    suspend fun lookupAll(word: String): List<Triple<String, String, List<String>>> = withContext(Dispatchers.IO) {
+        val results = mutableListOf<Triple<String, String, List<String>>>()
         loadedDictionaries.toList().forEach { dict ->
             val content = lookup(dict.id, word)
             if (content != null) {

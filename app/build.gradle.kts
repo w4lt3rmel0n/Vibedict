@@ -81,6 +81,7 @@ dependencies {
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.google.material)
     implementation(libs.google.generativeai)
+    implementation(libs.jspeex)
     implementation(libs.reorderable)
 
     testImplementation(libs.junit)

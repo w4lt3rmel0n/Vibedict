@@ -82,7 +82,7 @@ class DefViewModel(
                  DictionaryEntry(
                      id = dict.id,
                      dictionaryName = dict.name, 
-                     definitionContent = "",
+                     entries = emptyList(),
                      customCss = "",
                      customJs = "",
 
@@ -128,39 +128,29 @@ class DefViewModel(
                             val index = currentList.indexOfFirst { it.id == entry.id }
                             
                             if (index != -1) {
-                                if (content != null) {
-                                    // --- Handle @@@LINK= Redirection ---
-                                    var finalContent: String = content
-                                    var redirectCount = 0
-                                    while (finalContent.trim().startsWith("@@@LINK=") && redirectCount < 5) {
-                                        val targetWord = finalContent.trim().substringAfter("@@@LINK=").trim()
-                                        val dict = DictionaryManager.getDictionaryById(entry.id)
-                                        val newContentList = dict?.mdxEngine?.lookup(targetWord)
-
-                                        if (!newContentList.isNullOrEmpty()) {
-                                            finalContent = newContentList.joinToString("<hr>")
-                                        } else {
-                                            break
-                                        }
-                                        redirectCount++
-                                    }
-                                    // ----------------------------------------
-
+                                if (!content.isNullOrEmpty()) {
                                     // --- Check for Internal Resources ---
                                     var hasInternalCss = false
                                     var hasInternalJs = false
 
                                     try {
-                                        val cssLinks = Regex("""<link[^>]+href=["'](.*?)["']""", RegexOption.IGNORE_CASE).findAll(finalContent).map { it.groupValues[1] }.toList()
-                                        val jsLinks = Regex("""<script[^>]+src=["'](.*?)["']""", RegexOption.IGNORE_CASE).findAll(finalContent).map { it.groupValues[1] }.toList()
+                                        // Check all entries for resource references
+                                        content.forEach { str ->
+                                            val cssLinks = Regex("""<link[^>]+href=["'](.*?)["']""", RegexOption.IGNORE_CASE).findAll(str).map { it.groupValues[1] }.toList()
+                                            val jsLinks = Regex("""<script[^>]+src=["'](.*?)["']""", RegexOption.IGNORE_CASE).findAll(str).map { it.groupValues[1] }.toList()
 
-                                        hasInternalCss = cssLinks.any { path -> 
-                                            val decoded = java.net.URLDecoder.decode(path, "UTF-8")
-                                            DictionaryManager.getResource(entry.id, decoded) != null 
-                                        }
-                                        hasInternalJs = jsLinks.any { path -> 
-                                            val decoded = java.net.URLDecoder.decode(path, "UTF-8")
-                                            DictionaryManager.getResource(entry.id, decoded) != null 
+                                            if (!hasInternalCss) {
+                                                hasInternalCss = cssLinks.any { path -> 
+                                                    val decoded = java.net.URLDecoder.decode(path, "UTF-8")
+                                                    DictionaryManager.getResource(entry.id, decoded) != null 
+                                                }
+                                            }
+                                            if (!hasInternalJs) {
+                                                hasInternalJs = jsLinks.any { path -> 
+                                                    val decoded = java.net.URLDecoder.decode(path, "UTF-8")
+                                                    DictionaryManager.getResource(entry.id, decoded) != null 
+                                                }
+                                            }
                                         }
                                     } catch (e: Exception) {
                                         e.printStackTrace()
@@ -172,7 +162,7 @@ class DefViewModel(
 
                                     currentList[index] = currentList[index].copy(
                                         dictionaryName = finalName,
-                                        definitionContent = finalContent,
+                                        entries = content,
                                         customCss = resolvedCss,
                                         customJs = resolvedJs,
                                         isExpandedByDefault = isExpanded,
@@ -203,10 +193,8 @@ class DefViewModel(
                                 val baseWord = query.split(" ").firstOrNull()
 
                                 if (baseWord != null && baseWord != query) {
-                                    // We need to check if baseWord has results. 
-                                    // Since we are inside a coroutine, we can't easily call searchWord again without resetting everything.
-                                    // But we can just check quickly.
-                                    val baseResults = DictionaryManager.lookupAll(baseWord) // This is blocking/suspend but fine here
+                                    // Check baseWord
+                                    val baseResults = DictionaryManager.lookupAll(baseWord) 
                                     
                                     if (baseResults.isNotEmpty()) {
                                         Log.e("MdictJNI", "!!! DefViewModel: Fallback SUCCESS. Found '$baseWord'. Triggering nav.")

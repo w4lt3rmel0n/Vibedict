@@ -427,7 +427,7 @@ class SettingsViewModel(private val repository: UserPreferencesRepository) : Vie
             name = "New Provider",
             type = "Google", // Default
             apiKey = "",
-            model = "gemini-pro"
+            model = "gemini-flash-latest"
         )
         repository.addLLMProvider(newProvider)
         onCreated(newId)

@@ -1402,7 +1402,15 @@ namespace mdict {
 
             unsigned long comp_acc = 0l;
             unsigned long decomp_acc = 0l;
+            size_t buff_size = decompress_buff.size();
+
             while (counter < this->key_block_num) {
+                // Check bounds for current_entries
+                size_t entry_len_size = (this->version >= 2.0) ? 8 : 4;
+                if (data_offset + entry_len_size > buff_size) {
+                    throw std::runtime_error("decode_key_block_info: buffer overflow reading current_entries");
+                }
+
                 if (this->version >= 2.0) {
                     auto bin_pointer =
                             decompress_buff.data() + data_offset * sizeof(uint8_t);
@@ -1418,6 +1426,12 @@ namespace mdict {
                 // if version>= 2.0 move forward 8 bytes
 
                 data_offset += this->number_width * sizeof(uint8_t);
+
+                // Check bounds for first_key_size
+                size_t key_size_len = (this->version >= 2.0) ? 2 : 1;
+                if (data_offset + key_size_len > buff_size) {
+                    throw std::runtime_error("decode_key_block_info: buffer overflow reading first_key_size");
+                }
 
                 // first key size
                 unsigned long first_key_size = 0;
@@ -1438,6 +1452,11 @@ namespace mdict {
                     step_gap = (first_key_size + text_term) * 2;
                 } else {
                     step_gap = first_key_size + text_term;
+                }
+
+                // Check bounds for first_key content
+                if (data_offset + step_gap > buff_size) {
+                    throw std::runtime_error("decode_key_block_info: buffer overflow reading first_key content");
                 }
 
                 // DECODE first CODE
@@ -1461,6 +1480,11 @@ namespace mdict {
                 // move forward
                 data_offset += step_gap;
 
+                // Check bounds for last_key_size
+                if (data_offset + key_size_len > buff_size) {
+                    throw std::runtime_error("decode_key_block_info: buffer overflow reading last_key_size");
+                }
+
                 // the last key
                 unsigned long last_key_size = 0;
 
@@ -1477,6 +1501,11 @@ namespace mdict {
                     step_gap = (last_key_size + text_term) * 2;
                 } else {
                     step_gap = last_key_size + text_term;
+                }
+
+                // Check bounds for last_key content
+                if (data_offset + step_gap > buff_size) {
+                    throw std::runtime_error("decode_key_block_info: buffer overflow reading last_key content");
                 }
 
                 std::string last_key;
@@ -1501,6 +1530,12 @@ namespace mdict {
                 // ------------
                 // key block part
                 // ------------
+                
+                // Check bounds for key_block_compress_size and key_block_decompress_size
+                // We read 2 * number_width (compress_size + decompress_size)
+                if (data_offset + 2 * this->number_width > buff_size) {
+                    throw std::runtime_error("decode_key_block_info: buffer overflow reading block sizes");
+                }
 
                 uint64_t key_block_compress_size = 0;
                 if (version >= 2.0) {

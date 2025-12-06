@@ -38,7 +38,7 @@ data class LLMProvider(
     val name: String,
     val type: String, // e.g., "Google"
     val apiKey: String,
-    val model: String // e.g., "gemini-pro"
+    val model: String // e.g., "gemini-flash-latest"
 )
 
 // --- NEW: Data model for AI Prompt ---
