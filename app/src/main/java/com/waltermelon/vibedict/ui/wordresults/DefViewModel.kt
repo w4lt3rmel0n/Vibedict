@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import android.util.Log
+import kotlinx.coroutines.flow.stateIn
 
 class DefViewModel(
     private val word: String,
@@ -23,6 +24,13 @@ class DefViewModel(
 
     private val _isBookmarked = MutableStateFlow(false)
     val isBookmarked: StateFlow<Boolean> = _isBookmarked.asStateFlow()
+
+    // --- ADDED ---
+    val textScale = repository.textScale.stateIn(
+        viewModelScope,
+        kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5000),
+        0.5f
+    )
 
     // --- ADDED ---
     private val _navigateToWord = MutableStateFlow<String?>(null)

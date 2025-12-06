@@ -75,6 +75,7 @@ fun DefScreen(
     var showMenu by remember { mutableStateOf(false) }
     val uiState by viewModel.uiState.collectAsState()
     val isBookmarked by viewModel.isBookmarked.collectAsState()
+    val textScale by viewModel.textScale.collectAsState()
 
     // Navigation Logic
     val navigateToWord by viewModel.navigateToWord.collectAsState()
@@ -237,10 +238,9 @@ fun DefScreen(
                                     customJs = entry.customJs,
                                     isVisible = isExpanded,
                                     forceOriginalStyle = entry.forceOriginalStyle,
-                                    customFontPaths = entry.customFontPaths,
-                                    findQuery = findQuery,
                                     findNavEvent = findNavEvent,
-                                    isLoading = entry.isLoading
+                                    isLoading = entry.isLoading,
+                                    textScale = textScale // --- NEW ---
                                 )
                             }
                         }
@@ -408,7 +408,8 @@ fun DictionaryBodyItem(
     customFontPaths: String = "",
     findQuery: String = "",
     findNavEvent: FindNavEvent? = null,
-    isLoading: Boolean = false // --- NEW ---
+    isLoading: Boolean = false, // --- NEW ---
+    textScale: Float = 0.5f // --- NEW ---
 ) {
     val coroutineScope = rememberCoroutineScope()
 
@@ -643,7 +644,12 @@ fun DictionaryBodyItem(
                                 val sanitizedCustomCss = customCss.replace("</?style[^>]*>".toRegex(RegexOption.IGNORE_CASE), "")
                                 val sanitizedCustomJs = customJs.replace("</?script[^>]*>".toRegex(RegexOption.IGNORE_CASE), "")
 
-                                val finalCss = "$sanitizedCustomCss\n$transparencyCss\n$darkModeCss\n$fontCss"
+                                // --- FONT SIZE INJECTION ---
+                                val fontSizePercent = ((textScale + 0.5f) * 100).toInt()
+                                val fontSizeCss = "html, body { font-size: $fontSizePercent% !important; }"
+                                // ---------------------------
+
+                                val finalCss = "$sanitizedCustomCss\n$transparencyCss\n$darkModeCss\n$fontCss\n$fontSizeCss"
 
                                 val linkFixerJs = """
                                     <script>
