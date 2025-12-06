@@ -43,8 +43,8 @@ class SettingsViewModel(private val repository: UserPreferencesRepository) : Vie
         SharingStarted.WhileSubscribed(5000),
         "Follow System"
     )
-    val textScale =
-        repository.textScale.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0.5f)
+    val displayScale =
+        repository.displayScale.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0.5f)
     val debugMode =
         repository.debugMode.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
     val keepScreenOn =
@@ -165,7 +165,7 @@ class SettingsViewModel(private val repository: UserPreferencesRepository) : Vie
         }
         androidx.appcompat.app.AppCompatDelegate.setApplicationLocales(localeList)
     }
-    fun setTextScale(scale: Float) = viewModelScope.launch { repository.setTextScale(scale) }
+    fun setDisplayScale(scale: Float) = viewModelScope.launch { repository.setDisplayScale(scale) }
     fun setDebugMode(enabled: Boolean) = viewModelScope.launch { repository.setDebugMode(enabled) }
     fun setKeepScreenOn(enabled: Boolean) =
         viewModelScope.launch { repository.setKeepScreenOn(enabled) }

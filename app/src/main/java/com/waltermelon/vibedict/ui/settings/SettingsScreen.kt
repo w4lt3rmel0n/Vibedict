@@ -75,7 +75,7 @@ fun SettingsScreen(
     val currentDarkMode by viewModel.darkMode.collectAsState()
     val materialColour by viewModel.materialColour.collectAsState()
     val currentLanguage by viewModel.language.collectAsState()
-    val sliderPosition by viewModel.textScale.collectAsState()
+    val sliderPosition by viewModel.displayScale.collectAsState()
     val keepScreenOn by viewModel.keepScreenOn.collectAsState()
     val instantSearch by viewModel.instantSearch.collectAsState()
 
@@ -110,7 +110,7 @@ fun SettingsScreen(
                     materialColour = materialColour,
                     onMaterialColourChange = { viewModel.setMaterialColour(it) },
                     sliderPosition = sliderPosition,
-                    onSliderPositionChange = { viewModel.setTextScale(it) },
+                    onSliderPositionChange = { viewModel.setDisplayScale(it) },
                     instantSearch = instantSearch,
                     onInstantSearchChange = { viewModel.setInstantSearch(it) },
                     keepScreenOn = keepScreenOn,
@@ -236,7 +236,7 @@ private fun InterfaceSettingsCard(
             Slider(
                 value = sliderPosition,
                 onValueChange = onSliderPositionChange,
-                steps = 5,
+                steps = 19,
                 modifier = Modifier.fillMaxWidth()
             )
         }

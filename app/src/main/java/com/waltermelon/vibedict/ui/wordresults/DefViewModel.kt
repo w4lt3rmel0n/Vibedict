@@ -26,7 +26,7 @@ class DefViewModel(
     val isBookmarked: StateFlow<Boolean> = _isBookmarked.asStateFlow()
 
     // --- ADDED ---
-    val textScale = repository.textScale.stateIn(
+    val displayScale = repository.displayScale.stateIn(
         viewModelScope,
         kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5000),
         0.5f

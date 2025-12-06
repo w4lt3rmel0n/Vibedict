@@ -44,7 +44,7 @@
     <string name="pref_material_subtitle">Follow System colour scheme</string>
     <string name="pref_instant_search">Instant search</string>
     <string name="pref_instant_search_subtitle">Keyboard pops up instantly when entering the app</string>
-    <string name="pref_text_size">Text size</string>
+    <string name="pref_text_size">Display size</string>
     <string name="pref_keep_screen_on">Keep screen on</string>
     <string name="pref_keep_screen_on_subtitle">Screen stays on while app is open</string>
 

@@ -61,7 +61,7 @@ class UserPreferencesRepository(private val context: Context) {
         val DARK_MODE = stringPreferencesKey("dark_mode")
         val MATERIAL_COLOUR = booleanPreferencesKey("material_colour")
         val LANGUAGE = stringPreferencesKey("language")
-        val TEXT_SCALE = floatPreferencesKey("text_scale")
+        val DISPLAY_SCALE = floatPreferencesKey("display_scale")
         val DEBUG_MODE = booleanPreferencesKey("debug_mode")
         val KEEP_SCREEN_ON = booleanPreferencesKey("keep_screen_on")
         val DEFAULT_FOLDER = stringPreferencesKey("default_folder_path")
@@ -87,7 +87,7 @@ class UserPreferencesRepository(private val context: Context) {
     val darkMode: Flow<String> = dataStore.data.map { it[Keys.DARK_MODE] ?: "Follow System" }
     val materialColour: Flow<Boolean> = dataStore.data.map { it[Keys.MATERIAL_COLOUR] ?: true }
     val language: Flow<String> = dataStore.data.map { it[Keys.LANGUAGE] ?: "Follow System" }
-    val textScale: Flow<Float> = dataStore.data.map { it[Keys.TEXT_SCALE] ?: 0.5f }
+    val displayScale: Flow<Float> = dataStore.data.map { it[Keys.DISPLAY_SCALE] ?: 0.5f }
     val debugMode: Flow<Boolean> = dataStore.data.map { it[Keys.DEBUG_MODE] ?: false }
     val keepScreenOn: Flow<Boolean> = dataStore.data.map { it[Keys.KEEP_SCREEN_ON] ?: false }
     val defaultFolder: Flow<String> = dataStore.data.map { it[Keys.DEFAULT_FOLDER] ?: "/new_dict/dictionaries" }
@@ -131,7 +131,7 @@ class UserPreferencesRepository(private val context: Context) {
     suspend fun setDarkMode(mode: String) = dataStore.edit { it[Keys.DARK_MODE] = mode }
     suspend fun setMaterialColour(isEnabled: Boolean) = dataStore.edit { it[Keys.MATERIAL_COLOUR] = isEnabled }
     suspend fun setLanguage(lang: String) = dataStore.edit { it[Keys.LANGUAGE] = lang }
-    suspend fun setTextScale(scale: Float) = dataStore.edit { it[Keys.TEXT_SCALE] = scale }
+    suspend fun setDisplayScale(scale: Float) = dataStore.edit { it[Keys.DISPLAY_SCALE] = scale }
     suspend fun setDebugMode(isEnabled: Boolean) = dataStore.edit { it[Keys.DEBUG_MODE] = isEnabled }
     suspend fun setKeepScreenOn(isEnabled: Boolean) = dataStore.edit { it[Keys.KEEP_SCREEN_ON] = isEnabled }
     suspend fun setDefaultFolder(path: String) = dataStore.edit { it[Keys.DEFAULT_FOLDER] = path }

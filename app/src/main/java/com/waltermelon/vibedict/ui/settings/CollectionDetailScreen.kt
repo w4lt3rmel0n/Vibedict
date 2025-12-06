@@ -11,7 +11,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -69,6 +71,7 @@ fun CollectionDetailScreen(
     val unnamedText = stringResource(R.string.unnamed)
     // -----------------------------
 
+    val haptic = LocalHapticFeedback.current
     val allDictionaries = remember { DictionaryManager.loadedDictionaries }
 
     val (selectedDicts, unselectedDicts) = remember(selectedIds.toList(), allDictionaries) {
@@ -188,6 +191,11 @@ fun CollectionDetailScreen(
                 } else {
                     items(selectedDicts, key = { it.id }) { dict ->
                         ReorderableItem(reorderableState, key = dict.id) { isDragging ->
+                            LaunchedEffect(isDragging) {
+                                if (isDragging) {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                }
+                            }
                             val elevation by animateDpAsState(if (isDragging) 8.dp else 1.dp)
                             val isAutoExpand = autoExpandIds.contains(dict.id)
                             DictionaryCheckRow(

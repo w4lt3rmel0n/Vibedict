@@ -75,7 +75,7 @@ fun DefScreen(
     var showMenu by remember { mutableStateOf(false) }
     val uiState by viewModel.uiState.collectAsState()
     val isBookmarked by viewModel.isBookmarked.collectAsState()
-    val textScale by viewModel.textScale.collectAsState()
+    val displayScale by viewModel.displayScale.collectAsState()
 
     // Navigation Logic
     val navigateToWord by viewModel.navigateToWord.collectAsState()
@@ -240,7 +240,7 @@ fun DefScreen(
                                     forceOriginalStyle = entry.forceOriginalStyle,
                                     findNavEvent = findNavEvent,
                                     isLoading = entry.isLoading,
-                                    textScale = textScale // --- NEW ---
+                                    displayScale = displayScale // --- NEW ---
                                 )
                             }
                         }
@@ -409,7 +409,7 @@ fun DictionaryBodyItem(
     findQuery: String = "",
     findNavEvent: FindNavEvent? = null,
     isLoading: Boolean = false, // --- NEW ---
-    textScale: Float = 0.5f // --- NEW ---
+    displayScale: Float = 0.5f // --- NEW ---
 ) {
     val coroutineScope = rememberCoroutineScope()
 
@@ -468,6 +468,8 @@ fun DictionaryBodyItem(
                             settings.domStorageEnabled = true
                             setBackgroundColor(0x00000000)
                             isVerticalScrollBarEnabled = false
+                            isNestedScrollingEnabled = false
+                            overScrollMode = android.view.View.OVER_SCROLL_NEVER
 
                             webViewClient = object : WebViewClient() {
 
@@ -644,9 +646,9 @@ fun DictionaryBodyItem(
                                 val sanitizedCustomCss = customCss.replace("</?style[^>]*>".toRegex(RegexOption.IGNORE_CASE), "")
                                 val sanitizedCustomJs = customJs.replace("</?script[^>]*>".toRegex(RegexOption.IGNORE_CASE), "")
 
-                                // --- FONT SIZE INJECTION ---
-                                val fontSizePercent = ((textScale + 0.5f) * 100).toInt()
-                                val fontSizeCss = "html, body { font-size: $fontSizePercent% !important; }"
+                                // --- DISPLAY ZOOM INJECTION ---
+                                val zoomPercent = ((displayScale + 0.5f) * 100).toInt()
+                                val fontSizeCss = "html, body { zoom: $zoomPercent%; }"
                                 // ---------------------------
 
                                 val finalCss = "$sanitizedCustomCss\n$transparencyCss\n$darkModeCss\n$fontCss\n$fontSizeCss"
