@@ -85,4 +85,12 @@ object LogUtil {
         }
         context.startActivity(Intent.createChooser(intent, "Share Logs"))
     }
+
+    fun shareLogText(context: Context, logContent: String) {
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_TEXT, logContent)
+        }
+        context.startActivity(Intent.createChooser(intent, "Share Logs"))
+    }
 }

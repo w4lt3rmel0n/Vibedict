@@ -503,10 +503,7 @@ fun LogDialog(onDismiss: () -> Unit) {
                     
                     TextButton(onClick = {
                         logs?.let { logContent ->
-                            val file = LogUtil.exportLogs(context, logContent)
-                            if (file != null) {
-                                LogUtil.shareLogs(context, file)
-                            }
+                             LogUtil.shareLogText(context, logContent)
                         }
                     }) {
                         Text("Share")
