@@ -19,7 +19,12 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.zIndex
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInParent
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -205,43 +210,102 @@ fun DefScreen(
                     }
                 }
                 is DefUiState.Success -> {
-                    LazyColumn(modifier = Modifier.fillMaxSize()) {
-                        state.results.forEach { entry ->
-                            val isExpanded = expandedStates.getOrDefault(entry.dictionaryName, entry.isExpandedByDefault)
-                            val selectedIndex = selectedIndices.getOrDefault(entry.id, 0) // Use ID for key
+                    val scrollState = rememberScrollState()
+                    val headerPositions = remember { mutableStateMapOf<Int, Float>() }
+                    val headerHeights = remember { mutableStateMapOf<Int, Int>() }
 
-                            stickyHeader(key = "header_${entry.dictionaryName}") {
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        // --- STICKY HEADER OVERLAY ---
+                        val stickyIndex = state.results.indices.lastOrNull { index ->
+                            val y = headerPositions[index] ?: Float.MAX_VALUE
+                            y <= scrollState.value
+                        } ?: -1
+
+                        if (stickyIndex != -1) {
+                            val stickyEntry = state.results[stickyIndex]
+                            val isExpanded = expandedStates.getOrDefault(stickyEntry.dictionaryName, stickyEntry.isExpandedByDefault)
+                            val selectedIndex = selectedIndices.getOrDefault(stickyEntry.id, 0)
+                            
+                            val nextHeaderY = headerPositions[stickyIndex + 1]
+                            val currentHeaderHeight = headerHeights[stickyIndex] ?: 0
+                            
+                            val offset = if (nextHeaderY != null && currentHeaderHeight > 0) {
+                                val intercept = nextHeaderY - scrollState.value
+                                if (intercept < currentHeaderHeight) intercept - currentHeaderHeight else 0f
+                            } else {
+                                0f
+                            }
+                            
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .zIndex(1f)
+                                    .graphicsLayer { translationY = offset }
+                            ) {
                                 DictionaryHeaderItem(
-                                    title = entry.dictionaryName,
+                                    title = stickyEntry.dictionaryName,
                                     isExpanded = isExpanded,
-                                    onToggle = { expandedStates[entry.dictionaryName] = !isExpanded },
-                                    isLoading = entry.isLoading,
-                                    // --- PASS SELECTION DATA ---
-                                    entryCount = entry.entries.size,
+                                    onToggle = { expandedStates[stickyEntry.dictionaryName] = !isExpanded },
+                                    isLoading = stickyEntry.isLoading,
+                                    entryCount = stickyEntry.entries.size,
                                     selectedIndex = selectedIndex,
-                                    onSelectEntry = { newIndex -> selectedIndices[entry.id] = newIndex }
+                                    onSelectEntry = { newIndex -> selectedIndices[stickyEntry.id] = newIndex }
                                 )
                             }
-                            item(key = "content_${entry.dictionaryName}") {
-                                // Select content based on index, safe guard against OOB
-                                val contentToShow = if (entry.entries.isNotEmpty()) {
-                                    entry.entries.getOrElse(selectedIndex) { entry.entries[0] }
-                                } else {
-                                    ""
-                                }
+                        }
+                        // -----------------------------
 
-                                DictionaryBodyItem(
-                                    navController = navController,
-                                    dictId = entry.id,
-                                    content = contentToShow,
-                                    customCss = entry.customCss,
-                                    customJs = entry.customJs,
-                                    isVisible = isExpanded,
-                                    forceOriginalStyle = entry.forceOriginalStyle,
-                                    findNavEvent = findNavEvent,
-                                    isLoading = entry.isLoading,
-                                    displayScale = displayScale // --- NEW ---
-                                )
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .verticalScroll(scrollState)
+                        ) {
+                            state.results.forEachIndexed { index, entry ->
+                                key(entry.id) {
+                                    val isExpanded = expandedStates.getOrDefault(entry.dictionaryName, entry.isExpandedByDefault)
+                                    val selectedIndex = selectedIndices.getOrDefault(entry.id, 0)
+
+                                    Box(
+                                        modifier = Modifier.onGloballyPositioned { coordinates ->
+                                            headerPositions[index] = coordinates.positionInParent().y
+                                            headerHeights[index] = coordinates.size.height
+                                        }
+                                    ) {
+                                        DictionaryHeaderItem(
+                                            title = entry.dictionaryName,
+                                            isExpanded = isExpanded,
+                                            onToggle = { expandedStates[entry.dictionaryName] = !isExpanded },
+                                            isLoading = entry.isLoading,
+                                            entryCount = entry.entries.size,
+                                            selectedIndex = selectedIndex,
+                                            onSelectEntry = { newIndex -> selectedIndices[entry.id] = newIndex }
+                                        )
+                                    }
+
+                                    // --- NEW: Observe live font paths to handle updates immediately ---
+                                    val dynamicFontPaths by viewModel.getFontPaths(entry.id).collectAsState(initial = entry.customFontPaths)
+
+                                    // Select content based on index, safe guard against OOB
+                                    val contentToShow = if (entry.entries.isNotEmpty()) {
+                                        entry.entries.getOrElse(selectedIndex) { entry.entries[0] }
+                                    } else {
+                                        ""
+                                    }
+
+                                    DictionaryBodyItem(
+                                        navController = navController,
+                                        dictId = entry.id,
+                                        content = contentToShow,
+                                        customCss = entry.customCss,
+                                        customJs = entry.customJs,
+                                        isVisible = isExpanded,
+                                        forceOriginalStyle = entry.forceOriginalStyle,
+                                        customFontPaths = dynamicFontPaths, // --- CHANGED to live flow ---
+                                        findNavEvent = findNavEvent,
+                                        isLoading = entry.isLoading,
+                                        displayScale = displayScale // --- NEW ---
+                                    )
+                                }
                             }
                         }
                     }
@@ -475,10 +539,14 @@ fun DictionaryBodyItem(
 
                                 override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {
                                     val url = request?.url?.toString() ?: ""
+                                    if (url.startsWith("https://waltermelon.app/")) {
+                                        android.util.Log.d("MdictJNI", "WebView Request Intercepted: $url")
+                                    }
 
                                     // --- A. Serve Local Fonts ---
                                     if (url.startsWith("https://waltermelon.app/fonts/")) {
                                         val requestedFileNameEncoded = url.substringAfter("https://waltermelon.app/fonts/")
+                                        android.util.Log.d("MdictJNI", "Intercepting font request: $requestedFileNameEncoded")
                                          try {
                                             val requestedFileName = java.net.URLDecoder.decode(requestedFileNameEncoded, "UTF-8")
                                             val fontFile = File(ctx.filesDir, "fonts/$requestedFileName")
@@ -487,6 +555,8 @@ fun DictionaryBodyItem(
                                                 // Use getMimeType to support .otf as well
                                                 val mime = getMimeType(requestedFileName)
                                                 return WebResourceResponse(mime, "UTF-8", FileInputStream(fontFile))
+                                            } else {
+                                                android.util.Log.e("MdictJNI", "Font file not found: ${fontFile.absolutePath}")
                                             }
                                         } catch (e: Exception) {
                                             e.printStackTrace()
@@ -626,20 +696,27 @@ fun DictionaryBodyItem(
 
                                 // --- FONT INJECTION ---
                                 val fontCss = if (customFontPaths.isNotEmpty()) {
+                                    android.util.Log.d("MdictJNI", "Generating CSS for fonts: $customFontPaths")
                                     val fontList = customFontPaths.split(",").filter { it.isNotBlank() }
                                     val fontFaceDeclarations = fontList.joinToString("\n") { path ->
                                         val fontFileName = path.substringAfterLast('/')
+                                        // Encode the filename for the URL, replacing "+" with "%20" as browsers expect
+                                        val encodedFileName = java.net.URLEncoder.encode(fontFileName, "UTF-8").replace("+", "%20")
                                         val fontFamilyName = fontFileName.substringBeforeLast('.')
                                         """
                                         @font-face {
                                             font-family: '$fontFamilyName';
-                                            src: url('https://waltermelon.app/fonts/$fontFileName');
+                                            src: url('https://waltermelon.app/fonts/$encodedFileName');
                                         }
                                         """
                                     }
                                     val firstFontFamily = fontList.firstOrNull()?.substringAfterLast('/')?.substringBeforeLast('.') ?: ""
+                                    // Apply to body with high specificity
                                     "$fontFaceDeclarations\nbody { font-family: '$firstFontFamily', sans-serif !important; }"
-                                } else { "" }
+                                } else { 
+                                    android.util.Log.d("MdictJNI", "No custom fonts found.")
+                                    "" 
+                                }
                                 // ----------------------
 
                                 // Sanitize CSS and JS to remove any tags that might be present in the source files
@@ -648,10 +725,13 @@ fun DictionaryBodyItem(
 
                                 // --- DISPLAY ZOOM INJECTION ---
                                 val zoomPercent = ((displayScale + 0.5f) * 100).toInt()
-                                val fontSizeCss = "html, body { zoom: $zoomPercent%; }"
+                                // FIX: Apply zoom to html ONLY to avoid conflicts with body styles/fonts
+                                val fontSizeCss = "html { zoom: $zoomPercent%; }"
                                 // ---------------------------
 
-                                val finalCss = "$sanitizedCustomCss\n$transparencyCss\n$darkModeCss\n$fontCss\n$fontSizeCss"
+                                // Inject fontSizeCss BEFORE fontCss to ensure font properties on body take precedence if any conflict arose
+                                val finalCss = "$sanitizedCustomCss\n$transparencyCss\n$darkModeCss\n$fontSizeCss\n$fontCss"
+                                android.util.Log.d("MdictJNI", "Final CSS injected (last 200 chars): ${finalCss.takeLast(200)}")
 
                                 val linkFixerJs = """
                                     <script>

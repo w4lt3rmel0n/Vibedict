@@ -57,6 +57,10 @@ class DefViewModel(
         }
     }
 
+    fun getFontPaths(dictId: String): kotlinx.coroutines.flow.Flow<String> {
+        return repository.getDictionaryFontPaths(dictId)
+    }
+
     private val _resultsMutex = kotlinx.coroutines.sync.Mutex()
 
     private fun searchWord(query: String) {
