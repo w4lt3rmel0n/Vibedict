@@ -146,11 +146,35 @@ class DefViewModel(
                                     }
                                     // ----------------------------------------
 
+                                    // --- Check for Internal Resources ---
+                                    var hasInternalCss = false
+                                    var hasInternalJs = false
+
+                                    try {
+                                        val cssLinks = Regex("""<link[^>]+href=["'](.*?)["']""", RegexOption.IGNORE_CASE).findAll(finalContent).map { it.groupValues[1] }.toList()
+                                        val jsLinks = Regex("""<script[^>]+src=["'](.*?)["']""", RegexOption.IGNORE_CASE).findAll(finalContent).map { it.groupValues[1] }.toList()
+
+                                        hasInternalCss = cssLinks.any { path -> 
+                                            val decoded = java.net.URLDecoder.decode(path, "UTF-8")
+                                            DictionaryManager.getResource(entry.id, decoded) != null 
+                                        }
+                                        hasInternalJs = jsLinks.any { path -> 
+                                            val decoded = java.net.URLDecoder.decode(path, "UTF-8")
+                                            DictionaryManager.getResource(entry.id, decoded) != null 
+                                        }
+                                    } catch (e: Exception) {
+                                        e.printStackTrace()
+                                    }
+
+                                    val resolvedCss = if (customCss.isNotBlank()) customCss else if (hasInternalCss) "" else fileCss
+                                    val resolvedJs = if (customJs.isNotBlank()) customJs else if (hasInternalJs) "" else fileJs
+                                    // ------------------------------------
+
                                     currentList[index] = currentList[index].copy(
                                         dictionaryName = finalName,
                                         definitionContent = finalContent,
-                                        customCss = finalCss,
-                                        customJs = finalJs,
+                                        customCss = resolvedCss,
+                                        customJs = resolvedJs,
                                         isExpandedByDefault = isExpanded,
                                         forceOriginalStyle = forceOriginal,
                                         customFontPaths = customFontPaths,

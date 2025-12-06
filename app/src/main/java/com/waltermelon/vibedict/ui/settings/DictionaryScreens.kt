@@ -393,6 +393,12 @@ fun DictionaryDetailScreen(navController: NavController, dictId: String) {
     var fontToRenamePath by remember { mutableStateOf("") }
     var fontRenameInput by remember { mutableStateOf("") }
 
+    // --- WARNING DIALOGS STATE ---
+    var showCssWarning by remember { mutableStateOf(false) }
+    var showJsWarning by remember { mutableStateOf(false) }
+    var pendingCssAction by remember { mutableStateOf<(() -> Unit)?>(null) }
+    var pendingJsAction by remember { mutableStateOf<(() -> Unit)?>(null) }
+
     // -- Launchers --
     val cssPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
@@ -567,13 +573,19 @@ fun DictionaryDetailScreen(navController: NavController, dictId: String) {
                     icon = Icons.Outlined.Css, title = stringResource(R.string.css_config), subtitle = cssStatus,
                     trailingContent = {
                         Row {
-                            IconButton(onClick = { cssPicker.launch(arrayOf("text/css", "*/*")) }) { Icon(Icons.Default.Upload, stringResource(R.string.upload)) }
+                            IconButton(onClick = { 
+                                pendingCssAction = { cssPicker.launch(arrayOf("text/css", "*/*")) }
+                                showCssWarning = true
+                            }) { Icon(Icons.Default.Upload, stringResource(R.string.upload)) }
                             if (savedCss.isNotBlank()) {
                                 IconButton(onClick = { contentToView = savedCss; showCssDialog = true }) { Icon(Icons.Outlined.Visibility, stringResource(R.string.view)) }
                                 IconButton(onClick = { viewModel.deleteDictionaryCss(dictId) }) { Icon(Icons.Outlined.Delete, stringResource(R.string.delete), tint = MaterialTheme.colorScheme.error) }
                             } else if (fileCss.isNotBlank()) {
                                 IconButton(onClick = { contentToView = fileCss; showCssDialog = true }) { Icon(Icons.Outlined.Visibility, stringResource(R.string.view_file_css)) }
-                                IconButton(onClick = { viewModel.setDictionaryCss(dictId, fileCss) }) { Icon(Icons.Outlined.SaveAlt, stringResource(R.string.apply_file_css)) }
+                                IconButton(onClick = { 
+                                     pendingCssAction = { viewModel.setDictionaryCss(dictId, fileCss) }
+                                     showCssWarning = true
+                                }) { Icon(Icons.Outlined.SaveAlt, stringResource(R.string.apply_file_css)) }
                             }
                         }
                     }
@@ -584,13 +596,19 @@ fun DictionaryDetailScreen(navController: NavController, dictId: String) {
                     icon = Icons.Outlined.Javascript, title = stringResource(R.string.js_config), subtitle = jsStatus,
                     trailingContent = {
                         Row {
-                            IconButton(onClick = { jsPicker.launch(arrayOf("application/javascript", "text/plain", "*/*")) }) { Icon(Icons.Default.Upload, stringResource(R.string.upload)) }
+                            IconButton(onClick = { 
+                                pendingJsAction = { jsPicker.launch(arrayOf("application/javascript", "text/plain", "*/*")) }
+                                showJsWarning = true
+                            }) { Icon(Icons.Default.Upload, stringResource(R.string.upload)) }
                             if (savedJs.isNotBlank()) {
                                 IconButton(onClick = { contentToView = savedJs; showJsDialog = true }) { Icon(Icons.Outlined.Visibility, stringResource(R.string.view)) }
                                 IconButton(onClick = { viewModel.setDictionaryJs(dictId, "") }) { Icon(Icons.Outlined.Delete, stringResource(R.string.delete), tint = MaterialTheme.colorScheme.error) }
                             } else if (fileJs.isNotBlank()) {
                                 IconButton(onClick = { contentToView = fileJs; showJsDialog = true }) { Icon(Icons.Outlined.Visibility, stringResource(R.string.view_file_js)) }
-                                IconButton(onClick = { viewModel.setDictionaryJs(dictId, fileJs) }) { Icon(Icons.Outlined.SaveAlt, stringResource(R.string.apply_file_js)) }
+                                IconButton(onClick = { 
+                                     pendingJsAction = { viewModel.setDictionaryJs(dictId, fileJs) }
+                                     showJsWarning = true
+                                }) { Icon(Icons.Outlined.SaveAlt, stringResource(R.string.apply_file_js)) }
                             }
                         }
                     }
@@ -660,7 +678,43 @@ fun DictionaryDetailScreen(navController: NavController, dictId: String) {
         }
     }
 
-    // --- Dialogs (Unsaved, Rename, View Code) ---
+    // --- Dialogs (Unsaved, Rename, View Code, Mount Warning) ---
+    if (showCssWarning) {
+        AlertDialog(
+            onDismissRequest = { showCssWarning = false; pendingCssAction = null },
+            title = { Text(stringResource(R.string.warning)) },
+            text = { Text(stringResource(R.string.mount_css_warning)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    pendingCssAction?.invoke()
+                    showCssWarning = false
+                    pendingCssAction = null
+                }) { Text(stringResource(R.string.continue_text)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCssWarning = false; pendingCssAction = null }) { Text(stringResource(R.string.cancel)) }
+            }
+        )
+    }
+
+    if (showJsWarning) {
+        AlertDialog(
+            onDismissRequest = { showJsWarning = false; pendingJsAction = null },
+            title = { Text(stringResource(R.string.warning)) },
+            text = { Text(stringResource(R.string.mount_js_warning)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    pendingJsAction?.invoke()
+                    showJsWarning = false
+                    pendingJsAction = null
+                }) { Text(stringResource(R.string.continue_text)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showJsWarning = false; pendingJsAction = null }) { Text(stringResource(R.string.cancel)) }
+            }
+        )
+    }
+
     if (showUnsavedChangesDialog) {
         AlertDialog(
             onDismissRequest = { showUnsavedChangesDialog = false },

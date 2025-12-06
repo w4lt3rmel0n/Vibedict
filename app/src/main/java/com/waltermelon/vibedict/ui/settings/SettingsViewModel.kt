@@ -349,7 +349,7 @@ class SettingsViewModel(private val repository: UserPreferencesRepository) : Vie
                 val sanitized = newName.replace("[^a-zA-Z0-9_\\-\\s]".toRegex(), "")
                 val newFileName = "$sanitized.$extension"
                 val newFile = File(fontsDir, newFileName)
-
+                
                 // If names are identical (ignoring case/path), do nothing
                 if (oldFile.absolutePath == newFile.absolutePath) return@launch
 

@@ -412,9 +412,11 @@ fun DictionaryBodyItem(
 
                                     // --- A. Serve Local Fonts ---
                                     if (url.startsWith("https://waltermelon.app/fonts/")) {
-                                        val requestedFileName = url.substringAfter("https://waltermelon.app/fonts/")
+                                        val requestedFileNameEncoded = url.substringAfter("https://waltermelon.app/fonts/")
                                          try {
+                                            val requestedFileName = java.net.URLDecoder.decode(requestedFileNameEncoded, "UTF-8")
                                             val fontFile = File(ctx.filesDir, "fonts/$requestedFileName")
+                                            
                                             if (fontFile.exists()) {
                                                 // Use getMimeType to support .otf as well
                                                 val mime = getMimeType(requestedFileName)
@@ -594,7 +596,8 @@ fun DictionaryBodyItem(
                                     </script>
                                 """.trimIndent()
 
-                                val finalHtml = "<html><head><style>$finalCss</style></head><body>$content<script>$sanitizedCustomJs</script>$linkFixerJs</body></html>"
+                                // FIX: Inject CSS at the end of body to override dictionary styles
+                                val finalHtml = "<html><head></head><body>$content<style>$finalCss</style><script>$sanitizedCustomJs</script>$linkFixerJs</body></html>"
 
                                 webView.loadDataWithBaseURL(
                                     "https://waltermelon.app/",
