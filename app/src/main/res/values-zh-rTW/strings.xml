@@ -170,4 +170,8 @@
     <string name="rename_font_message">輸入新名稱（僅限英數字）。這將變更 CSS font-family。</string>
     <string name="css_content">CSS 內容</string>
     <string name="js_content">JS 內容</string>
+    <string name="warning">Warning</string>
+    <string name="mount_css_warning">This dictionary might already have internal styling. Mounting a custom file might cause conflicts. Do you want to continue?</string>
+    <string name="mount_js_warning">This dictionary might already have internal scripts. Mounting a custom file might cause conflicts. Do you want to continue?</string>
+    <string name="continue_text">Continue</string>
 </resources>

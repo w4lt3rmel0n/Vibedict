@@ -170,4 +170,8 @@
     <string name="rename_font_message">Enter a new name (alphanumeric only). This will change the CSS font-family.</string>
     <string name="css_content">CSS 内容</string>
     <string name="js_content">JS 内容</string>
+    <string name="warning">注意</string>
+    <string name="mount_css_warning">如果词典匹配的mdd已经包含css文件，添加额外的css文件可能导致一些显示问题，确定要继续吗？</string>
+    <string name="mount_js_warning">如果词典匹配的mdd已经包含js文件，添加额外的js文件可能导致一些显示问题，确定要继续吗？</string>
+    <string name="continue_text">继续</string>
 </resources>
