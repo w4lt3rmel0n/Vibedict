@@ -2098,7 +2098,7 @@ namespace mdict {
         for (char c : regex_str) {
              if (c == '^' || c == '$' || c == '.' || c == '*' || c == '+' || c == '?' || 
                  c == '(' || c == ')' || c == '[' || c == ']' || c == '{' || c == '}' || 
-                 c == '|' || c == '\\') {
+                 c == '|' || c == '\\' || c == '-' || c == ',') {
                  if (current_literal.length() > required_substring.length()) {
                      required_substring = current_literal;
                  }
