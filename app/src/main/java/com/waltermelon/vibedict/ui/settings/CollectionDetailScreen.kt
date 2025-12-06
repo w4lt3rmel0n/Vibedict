@@ -150,7 +150,7 @@ fun CollectionDetailScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                    .padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
@@ -158,16 +158,24 @@ fun CollectionDetailScreen(
                     style = MaterialTheme.typography.labelMedium,
                     modifier = Modifier.weight(1f)
                 )
-                Text(
-                    stringResource(R.string.expand),
-                    style = MaterialTheme.typography.labelMedium,
-                    modifier = Modifier.width(72.dp)
-                )
-                Text(
-                    stringResource(R.string.load),
-                    style = MaterialTheme.typography.labelMedium,
-                    modifier = Modifier.width(72.dp)
-                )
+                Box(
+                    modifier = Modifier.width(72.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        stringResource(R.string.expand),
+                        style = MaterialTheme.typography.labelMedium,
+                    )
+                }
+                Box(
+                    modifier = Modifier.width(72.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        stringResource(R.string.load),
+                        style = MaterialTheme.typography.labelMedium,
+                    )
+                }
             }
 
             LazyColumn(
