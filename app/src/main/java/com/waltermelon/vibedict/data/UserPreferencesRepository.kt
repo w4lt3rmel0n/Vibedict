@@ -80,6 +80,7 @@ class UserPreferencesRepository(private val context: Context) {
         // --- NEW: LLM Keys ---
         val LLM_PROVIDERS = stringPreferencesKey("llm_providers_json")
         val AI_PROMPTS = stringPreferencesKey("ai_prompts_json")
+        val USE_WILDCARD = booleanPreferencesKey("use_wildcard")
 
     }
 
@@ -95,7 +96,9 @@ class UserPreferencesRepository(private val context: Context) {
     val isFullText: Flow<Boolean> = dataStore.data.map { it[Keys.IS_FULL_TEXT] ?: false }
     val isRegexEnabled: Flow<Boolean> = dataStore.data.map { it[Keys.IS_REGEX_ENABLED] ?: false }
     val dictionaryDirectories: Flow<Set<String>> = dataStore.data.map { it[Keys.DICTIONARY_DIRS] ?: emptySet() }
+
     val bookmarks: Flow<Set<String>> = dataStore.data.map { it[Keys.BOOKMARKS] ?: emptySet() }
+    val useWildcard: Flow<Boolean> = dataStore.data.map { it[Keys.USE_WILDCARD] ?: false }
 
     // --- UPDATED: History Flow ---
     val history: Flow<List<String>> = dataStore.data.map { preferences ->
@@ -137,7 +140,9 @@ class UserPreferencesRepository(private val context: Context) {
     suspend fun setDefaultFolder(path: String) = dataStore.edit { it[Keys.DEFAULT_FOLDER] = path }
     suspend fun setInstantSearch(isEnabled: Boolean) = dataStore.edit { it[Keys.INSTANT_SEARCH] = isEnabled }
     suspend fun setFullText(isEnabled: Boolean) = dataStore.edit { it[Keys.IS_FULL_TEXT] = isEnabled }
+
     suspend fun setRegexEnabled(isEnabled: Boolean) = dataStore.edit { it[Keys.IS_REGEX_ENABLED] = isEnabled }
+    suspend fun setUseWildcard(isEnabled: Boolean) = dataStore.edit { it[Keys.USE_WILDCARD] = isEnabled }
 
     suspend fun addDictionaryDirectory(uriString: String) = dataStore.edit { preferences ->
         val currentSet = preferences[Keys.DICTIONARY_DIRS] ?: emptySet()

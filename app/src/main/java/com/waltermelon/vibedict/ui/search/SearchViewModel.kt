@@ -34,6 +34,7 @@ class SearchViewModel(private val repository: UserPreferencesRepository) : ViewM
     val isFullText = repository.isFullText.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
     val collections = repository.collections.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     val activeCollectionId = repository.activeCollectionId.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+    val useWildcard = repository.useWildcard.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
     private var searchJob: Job? = null
 
@@ -45,9 +46,18 @@ class SearchViewModel(private val repository: UserPreferencesRepository) : ViewM
                 isRegexEnabled,
                 isFullText,
                 activeCollectionId,
-                collections // We need collections to find the active one
-            ) { query, regex, fullText, activeId, allCollections ->
-                SearchRequest(query, regex, fullText, activeId, allCollections)
+                collections,
+                useWildcard
+            ) { args: Array<Any?> ->
+                val query = args[0] as String
+                val regex = args[1] as Boolean
+                val fullText = args[2] as Boolean
+                val activeId = args[3] as String?
+                @Suppress("UNCHECKED_CAST")
+                val allCollections = args[4] as List<DictCollection>
+                val wildcard = args[5] as Boolean
+
+                SearchRequest(query, regex, fullText, activeId, allCollections, wildcard)
             }.collectLatest { request ->
                 performSearch(request)
             }
@@ -83,7 +93,16 @@ class SearchViewModel(private val repository: UserPreferencesRepository) : ViewM
     }
 
     private suspend fun performSearch(request: SearchRequest) {
-        val (query, isRegex, isFullText, activeId, allCollections) = request
+        val (query, isRegexState, isFullText, activeId, allCollections, useWildcard) = request
+
+        // Determine effective query and regex mode
+        var effectiveQuery = query
+        val isRegex = if (isRegexState && useWildcard) {
+            effectiveQuery = wildcardToRegex(query)
+            true
+        } else {
+            isRegexState
+        }
 
         // Helper to check if a string contains CJK characters
         fun isCjk(s: String): Boolean {
@@ -115,11 +134,11 @@ class SearchViewModel(private val repository: UserPreferencesRepository) : ViewM
 
             // 2. Perform Suggestion Lookup
             val rawSuggestions = if (isRegex) {
-                DictionaryManager.getRegexSuggestionsRaw(query, filterIds)
+                DictionaryManager.getRegexSuggestionsRaw(effectiveQuery, filterIds)
             } else if (isFullText) {
-                DictionaryManager.getFullTextSuggestionsRaw(query, filterIds)
+                DictionaryManager.getFullTextSuggestionsRaw(effectiveQuery, filterIds)
             } else {
-                DictionaryManager.getSuggestionsRaw(query, filterIds)
+                DictionaryManager.getSuggestionsRaw(effectiveQuery, filterIds)
             }
 
             android.util.Log.d("SearchViewModel", "Found ${rawSuggestions.size} suggestions")
@@ -168,8 +187,57 @@ class SearchViewModel(private val repository: UserPreferencesRepository) : ViewM
         val isRegex: Boolean,
         val isFullText: Boolean,
         val activeId: String?,
-        val collections: List<DictCollection>
+        val collections: List<DictCollection>,
+        val useWildcard: Boolean
     )
+
+    private fun wildcardToRegex(wildcard: String): String {
+        val s = StringBuilder(wildcard.length + 8)
+        s.append('^')
+        var i = 0
+        while (i < wildcard.length) {
+            val c = wildcard[i]
+            when (c) {
+                '*' -> s.append(".*")
+                '?' -> s.append('.')
+                '[' -> {
+                    var j = i + 1
+                    if (j < wildcard.length && wildcard[j] == '!') {
+                        j++
+                    }
+                    if (j < wildcard.length && wildcard[j] == ']') {
+                        j++
+                    }
+                    while (j < wildcard.length && wildcard[j] != ']') {
+                        j++
+                    }
+                    if (j >= wildcard.length) {
+                        s.append("\\[")
+                    } else {
+                        s.append('[')
+                        i++
+                        if (wildcard[i] == '!') {
+                            s.append('^')
+                            i++
+                        }
+                        while (i < j) {
+                            if (wildcard[i] == '\\') {
+                                s.append('\\')
+                            }
+                            s.append(wildcard[i])
+                            i++
+                        }
+                        s.append(']')
+                    }
+                }
+                '(', ')', '{', '}', '.', '+', '|', '^', '$', '\\' -> s.append("\\").append(c)
+                else -> s.append(c)
+            }
+            i++
+        }
+        s.append('$')
+        return s.toString()
+    }
 
     class SearchViewModelFactory(private val repository: UserPreferencesRepository) : ViewModelProvider.Factory {
         override fun <T : ViewModel> create(modelClass: Class<T>): T {

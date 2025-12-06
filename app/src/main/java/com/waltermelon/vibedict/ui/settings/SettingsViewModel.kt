@@ -59,6 +59,11 @@ class SettingsViewModel(private val repository: UserPreferencesRepository) : Vie
         SharingStarted.WhileSubscribed(5000),
         false
     )
+    val useWildcard = repository.useWildcard.stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(5000),
+        false
+    )
     val dictionaryDirs = repository.dictionaryDirectories.stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(5000),
@@ -173,6 +178,8 @@ class SettingsViewModel(private val repository: UserPreferencesRepository) : Vie
     fun setDefaultFolder(path: String) = viewModelScope.launch { repository.setDefaultFolder(path) }
     fun setInstantSearch(enabled: Boolean) =
         viewModelScope.launch { repository.setInstantSearch(enabled) }
+    fun setUseWildcard(enabled: Boolean) =
+        viewModelScope.launch { repository.setUseWildcard(enabled) }
 
     fun addDictionaryFolder(context: Context, uri: Uri) = viewModelScope.launch {
         try {

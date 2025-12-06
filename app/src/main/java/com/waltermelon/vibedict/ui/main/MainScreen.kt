@@ -56,6 +56,7 @@ fun MainScreen(
     // --- UPDATED: Get settings from repository ---
     val isFullText by repository.isFullText.collectAsState(initial = false)
     val isRegexEnabled by repository.isRegexEnabled.collectAsState(initial = false)
+    val useWildcard by repository.useWildcard.collectAsState(initial = false)
     var showCollectionMenu by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
@@ -177,7 +178,7 @@ fun MainScreen(
                 FilterChip(
                     selected = isRegexEnabled,
                     onClick = { coroutineScope.launch { repository.setRegexEnabled(!isRegexEnabled) } },
-                    label = { Text(stringResource(R.string.regex)) },
+                    label = { Text(if (useWildcard) stringResource(R.string.wildcard) else stringResource(R.string.regex)) },
                     leadingIcon = if (isRegexEnabled) {
                         { Icon(imageVector = Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
                     } else null,

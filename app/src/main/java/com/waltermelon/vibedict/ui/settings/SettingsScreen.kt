@@ -77,7 +77,9 @@ fun SettingsScreen(
     val currentLanguage by viewModel.language.collectAsState()
     val sliderPosition by viewModel.displayScale.collectAsState()
     val keepScreenOn by viewModel.keepScreenOn.collectAsState()
+
     val instantSearch by viewModel.instantSearch.collectAsState()
+    val useWildcard by viewModel.useWildcard.collectAsState()
 
     var showLanguageDialog by remember { mutableStateOf(false) }
     var showDarkModeDialog by remember { mutableStateOf(false) }
@@ -111,8 +113,7 @@ fun SettingsScreen(
                     onMaterialColourChange = { viewModel.setMaterialColour(it) },
                     sliderPosition = sliderPosition,
                     onSliderPositionChange = { viewModel.setDisplayScale(it) },
-                    instantSearch = instantSearch,
-                    onInstantSearchChange = { viewModel.setInstantSearch(it) },
+
                     keepScreenOn = keepScreenOn,
                     onKeepScreenOnChange = { viewModel.setKeepScreenOn(it) }
                 )
@@ -123,6 +124,15 @@ fun SettingsScreen(
                     onConfigureClick = { navController.safeNavigate(Screen.DICTIONARY_LIST) },
                     onCollectionClick = { navController.safeNavigate(Screen.COLLECTION_LIST) },
                     onLLMClick = { navController.safeNavigate(Screen.LLM_PROVIDER_LIST) }
+                )
+            }
+
+            item {
+                SearchSettingsCard(
+                    instantSearch = instantSearch,
+                    onInstantSearchChange = { viewModel.setInstantSearch(it) },
+                    useWildcard = useWildcard,
+                    onUseWildcardChange = { viewModel.setUseWildcard(it) }
                 )
             }
 
@@ -188,8 +198,7 @@ private fun InterfaceSettingsCard(
     onMaterialColourChange: (Boolean) -> Unit,
     sliderPosition: Float,
     onSliderPositionChange: (Float) -> Unit,
-    instantSearch: Boolean,
-    onInstantSearchChange: (Boolean) -> Unit,
+
     keepScreenOn: Boolean,
     onKeepScreenOnChange: (Boolean) -> Unit
 ) {
@@ -218,14 +227,6 @@ private fun InterfaceSettingsCard(
             }
         )
 
-        SettingsRow(
-            icon = Icons.AutoMirrored.Outlined.Input,
-            title = stringResource(R.string.pref_instant_search),
-            subtitle = stringResource(R.string.pref_instant_search_subtitle),
-            trailingContent = {
-                Switch(checked = instantSearch, onCheckedChange = onInstantSearchChange)
-            }
-        )
 
         Column(Modifier.padding(horizontal = 16.dp, vertical = 16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -286,6 +287,33 @@ private fun DictionariesSettingsCard(
             onClick = onLLMClick,
             trailingContent = {
                 Icon(Icons.AutoMirrored.Outlined.ArrowForwardIos, null, modifier = Modifier.size(16.dp))
+            }
+        )
+    }
+}
+
+@Composable
+private fun SearchSettingsCard(
+    instantSearch: Boolean,
+    onInstantSearchChange: (Boolean) -> Unit,
+    useWildcard: Boolean,
+    onUseWildcardChange: (Boolean) -> Unit
+) {
+    SettingsCard(title = stringResource(R.string.search)) {
+        SettingsRow(
+            icon = Icons.AutoMirrored.Outlined.Input,
+            title = stringResource(R.string.pref_instant_search),
+            subtitle = stringResource(R.string.pref_instant_search_subtitle),
+            trailingContent = {
+                Switch(checked = instantSearch, onCheckedChange = onInstantSearchChange)
+            }
+        )
+        SettingsRow(
+            icon = Icons.Outlined.Search,
+            title = stringResource(R.string.wildcard_search),
+            subtitle = stringResource(R.string.wildcard_subtitle),
+            trailingContent = {
+                Switch(checked = useWildcard, onCheckedChange = onUseWildcardChange)
             }
         )
     }

@@ -63,6 +63,7 @@ fun SearchScreen(
     val searchHistory by viewModel.searchHistory.collectAsState()
     val isRegexEnabled by viewModel.isRegexEnabled.collectAsState()
     val isFullText by viewModel.isFullText.collectAsState()
+    val useWildcard by viewModel.useWildcard.collectAsState()
     
     val coroutineScope = rememberCoroutineScope()
 
@@ -254,7 +255,7 @@ fun SearchScreen(
                     FilterChip(
                         selected = isRegexEnabled,
                         onClick = { viewModel.setRegexEnabled(!isRegexEnabled) },
-                        label = { Text(stringResource(R.string.regex)) },
+                        label = { Text(if (useWildcard) stringResource(R.string.wildcard) else stringResource(R.string.regex)) },
                         leadingIcon = if (isRegexEnabled) {
                             { Icon(imageVector = Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
                         } else null,

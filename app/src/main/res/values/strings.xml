@@ -103,6 +103,9 @@
     <string name="define">Define</string>
     <string name="fulltext">Full text</string>
     <string name="regex">Regex</string>
+    <string name="wildcard">Wildcard</string>
+    <string name="wildcard_search">Wildcard search</string>
+    <string name="wildcard_subtitle">Enable wildcard characters in search</string>
 
     <string name="llm_services">LLM Services</string>
     <string name="add_provider">Add Provider</string>
