@@ -174,7 +174,25 @@ class SearchViewModel(private val repository: UserPreferencesRepository) : ViewM
                 MergedSearchResult(word, displayNames)
             }
 
-            _searchResults.value = finalResults
+            var results = finalResults
+            if (isFullText) {
+                // Sorting logic: Exact Match > Prefix Match > Frequency > Shortest > Alphabetical
+                results = finalResults.sortedWith(compareBy<MergedSearchResult> { 
+                    val word = it.word
+                    // Use effectiveQuery which contains the actual query string
+                    val q = effectiveQuery
+                    when {
+                        word.equals(q, ignoreCase = true) -> 0 // Exact match
+                        word.startsWith(q, ignoreCase = true) -> 1 // Prefix match
+                        else -> 2 // Other matches
+                    }
+                }
+                .thenByDescending { it.sources.size } // Frequency: More sources = higher relevance
+                .thenBy { it.word.length }            // Length: Shorter = likely more relevant/concise
+                .thenBy { it.word.lowercase() })      // Alphabetical tie-breaker
+            }
+
+            _searchResults.value = results
             _isSearching.value = false
         } else {
             _searchResults.value = emptyList()

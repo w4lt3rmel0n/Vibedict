@@ -94,10 +94,12 @@ fun LLMProviderConfigScreen(
     var name by remember { mutableStateOf(provider.name) }
     var apiKey by remember { mutableStateOf(provider.apiKey) }
     var model by remember { mutableStateOf(provider.model) }
-    var type by remember { mutableStateOf(provider.type) }
+    var type by remember { mutableStateOf(provider.type) } // Display Name
+    var protocol by remember { mutableStateOf(provider.protocol) }
+    var baseUrl by remember { mutableStateOf(provider.baseUrl ?: "") }
 
-    val providerTypes = listOf("Google", "Mistral (Experimental)", "Groq (Experimental)", "Celebras (Experimental)")
-    var isTypeExpanded by remember { mutableStateOf(false) }
+    val protocols = listOf("google", "general")
+    var isProtocolExpanded by remember { mutableStateOf(false) }
 
     fun update() {
         viewModel.updateLLMProvider(
@@ -105,7 +107,9 @@ fun LLMProviderConfigScreen(
                 name = name,
                 apiKey = apiKey,
                 model = model,
-                type = type
+                type = type,
+                protocol = protocol,
+                baseUrl = baseUrl.ifEmpty { null }
             )
         )
     }
@@ -144,16 +148,24 @@ fun LLMProviderConfigScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
+            OutlinedTextField(
+                value = type,
+                onValueChange = { type = it; update() },
+                label = { Text(stringResource(R.string.provider_type)) }, // Reusing string resource but now editable
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            // Protocol Dropdown
             ExposedDropdownMenuBox(
-                expanded = isTypeExpanded,
-                onExpandedChange = { isTypeExpanded = !isTypeExpanded }
+                expanded = isProtocolExpanded,
+                onExpandedChange = { isProtocolExpanded = !isProtocolExpanded }
             ) {
                 OutlinedTextField(
-                    value = type,
+                    value = protocol.replaceFirstChar { it.uppercase() },
                     onValueChange = {},
                     readOnly = true,
-                    label = { Text(stringResource(R.string.provider_type)) },
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isTypeExpanded) },
+                    label = { Text("Protocol") },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isProtocolExpanded) },
                     colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
                     modifier = Modifier
                         .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
@@ -161,21 +173,30 @@ fun LLMProviderConfigScreen(
                 )
 
                 ExposedDropdownMenu(
-                    expanded = isTypeExpanded,
-                    onDismissRequest = { isTypeExpanded = false }
+                    expanded = isProtocolExpanded,
+                    onDismissRequest = { isProtocolExpanded = false }
                 ) {
-                    providerTypes.forEach { selection ->
+                    protocols.forEach { selection ->
                         DropdownMenuItem(
-                            text = { Text(selection) },
+                            text = { Text(selection.replaceFirstChar { it.uppercase() }) },
                             onClick = {
-                                type = selection
+                                protocol = selection
                                 update()
-                                isTypeExpanded = false
+                                isProtocolExpanded = false
                             }
                         )
                     }
                 }
             }
+            
+            OutlinedTextField(
+                value = baseUrl,
+                onValueChange = { baseUrl = it; update() },
+                label = { Text("Base URL (Optional)") },
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text("https://api.provider.com/v1/") }
+
+            )
 
             OutlinedTextField(
                 value = apiKey,

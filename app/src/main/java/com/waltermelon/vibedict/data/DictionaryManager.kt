@@ -5,7 +5,7 @@ import android.net.Uri
 import android.system.Os
 import android.system.OsConstants
 import androidx.documentfile.provider.DocumentFile
-import com.google.ai.client.generativeai.GenerativeModel
+
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.Dispatchers
@@ -371,6 +371,11 @@ object DictionaryManager {
         }
     }
 
+    // --- NEW: Update LLM Providers Cache ---
+    fun updateLLMProviders(providers: List<LLMProvider>) {
+        loadedProviders = providers
+    }
+
     fun cleanup() {
         loadedDictionaries.forEach {
             it.mdxEngine?.close()
@@ -394,12 +399,7 @@ object DictionaryManager {
 
                 val aiResponse = if (provider != null && provider.apiKey.isNotBlank()) {
                     try {
-                        val generativeModel = GenerativeModel(
-                            modelName = provider.model.trim(),
-                            apiKey = provider.apiKey.trim()
-                        )
-                        val response = generativeModel.generateContent(promptText)
-                        response.text ?: "No response generated."
+                        provider.generateContent(promptText)
                     } catch (e: Exception) {
                         "Error: ${e.localizedMessage}"
                     }

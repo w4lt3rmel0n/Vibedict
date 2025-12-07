@@ -87,19 +87,4 @@ object FontUtils {
         }
     }
 
-    private fun RandomAccessFile.readUnsignedShort(): Int {
-        val ch1 = this.read()
-        val ch2 = this.read()
-        if ((ch1 or ch2) < 0) throw EOFException()
-        return (ch1 shl 8) + (ch2 shl 0)
-    }
-
-    private fun RandomAccessFile.readInt(): Int {
-        val ch1 = this.read()
-        val ch2 = this.read()
-        val ch3 = this.read()
-        val ch4 = this.read()
-        if ((ch1 or ch2 or ch3 or ch4) < 0) throw EOFException()
-        return (ch1 shl 24) + (ch2 shl 16) + (ch3 shl 8) + (ch4 shl 0)
-    }
 }

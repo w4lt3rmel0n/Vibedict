@@ -8,6 +8,14 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import org.json.JSONArray
 import org.json.JSONObject
+import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
+import retrofit2.http.Body
+import retrofit2.http.Header
+import retrofit2.http.Headers
+import retrofit2.http.POST
+import retrofit2.http.Query
+import retrofit2.http.Url
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "user_settings")
 
@@ -36,9 +44,11 @@ data class WebSearchEngine(
 data class LLMProvider(
     val id: String,
     val name: String,
-    val type: String, // e.g., "Google"
+    val type: String, // e.g., "Google" (Now just a label)
     val apiKey: String,
-    val model: String // e.g., "gemini-flash-latest"
+    val model: String, // e.g., "gemini-flash-latest"
+    val baseUrl: String? = null,
+    val protocol: String = "google" // "google" or "general"
 )
 
 // --- NEW: Data model for AI Prompt ---
@@ -494,7 +504,9 @@ class UserPreferencesRepository(private val context: Context) {
                     name = obj.getString("name"),
                     type = obj.getString("type"),
                     apiKey = obj.getString("apiKey"),
-                    model = obj.getString("model")
+                    model = obj.getString("model"),
+                    baseUrl = obj.optString("baseUrl", "").takeIf { it.isNotEmpty() },
+                    protocol = obj.optString("protocol", "google")
                 ))
             }
             list
@@ -513,6 +525,8 @@ class UserPreferencesRepository(private val context: Context) {
             obj.put("type", provider.type)
             obj.put("apiKey", provider.apiKey)
             obj.put("model", provider.model)
+            obj.put("baseUrl", provider.baseUrl)
+            obj.put("protocol", provider.protocol)
             array.put(obj)
         }
         return array.toString()
@@ -578,3 +592,105 @@ class UserPreferencesRepository(private val context: Context) {
         }
     }
 }
+
+// --- Retrofit Services & Data Models for LLM ---
+
+suspend fun LLMProvider.generateContent(prompt: String): String {
+    return try {
+        when (protocol.lowercase()) {
+            "google" -> {
+                val base = if (!baseUrl.isNullOrEmpty()) baseUrl else "https://generativelanguage.googleapis.com"
+                val retrofit = Retrofit.Builder()
+                    .baseUrl(base) // Retrofit requires baseUrl to end with /
+                    .addConverterFactory(GsonConverterFactory.create())
+                    .build()
+                
+                val service = retrofit.create(GeminiService::class.java)
+                // If baseUrl is passed, we might need a dynamic URL or rely on relative paths.
+                // Assuming standard Gemini structure: /v1beta/models/{model}:generateContent
+                
+                val request = GeminiRequest(
+                    contents = listOf(GeminiContent(parts = listOf(GeminiPart(text = prompt))))
+                )
+                val response = service.generateContent(model, apiKey, request)
+                response.candidates?.firstOrNull()?.content?.parts?.firstOrNull()?.text ?: "No response from Gemini."
+            }
+            "general" -> {
+                val base = if (!baseUrl.isNullOrEmpty()) baseUrl else "https://api.openai.com/v1/"
+                // Ensure base ends with slash
+                val finalBase = if (base.endsWith("/")) base else "$base/"
+                
+                // Detailed debug info
+                val finalUrl = "${finalBase}chat/completions"
+                val requestModel = model.trim()
+                
+                // Return this debug string on error to help user see what was sent
+                try {
+                    // Increase timeout for LLM calls (Default 10s is too short)
+                    val client = okhttp3.OkHttpClient.Builder()
+                        .connectTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
+                        .readTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
+                        .writeTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
+                        .build()
+
+                    val retrofit = Retrofit.Builder()
+                        .baseUrl(finalBase)
+                        .client(client)
+                        .addConverterFactory(GsonConverterFactory.create())
+                        .build()
+
+                    val service = retrofit.create(GeneralLlmService::class.java)
+                    val request = GeneralLlmRequest(
+                        model = requestModel,
+                        messages = listOf(GeneralMessage(role = "user", content = prompt))
+                    )
+                    
+                    val response = service.chatCompletions("Bearer $apiKey", request)
+                    response.choices?.firstOrNull()?.message?.content ?: "No response from Provider."
+                } catch (e: retrofit2.HttpException) {
+                    val errorBody = e.response()?.errorBody()?.string()
+                    "Failed: $finalUrl | Model: $requestModel | Code: ${e.code()} | Body: $errorBody"
+                } catch (e: Exception) {
+                    "Error: ${e.localizedMessage} | Attempted: $finalUrl"
+                }
+            }
+            else -> "Unknown Protocol: $protocol"
+        }
+    } catch (e: retrofit2.HttpException) {
+        val errorBody = e.response()?.errorBody()?.string()
+        "Error ${e.code()}: $errorBody"
+    } catch (e: Exception) {
+        "Error: ${e.localizedMessage}"
+    }
+}
+
+private interface GeminiService {
+    @POST("v1beta/models/{model}:generateContent")
+    suspend fun generateContent(
+        @retrofit2.http.Path("model") model: String,
+        @retrofit2.http.Query("key") apiKey: String,
+        @Body request: GeminiRequest
+    ): GeminiResponse
+}
+
+private interface GeneralLlmService {
+    @Headers("Content-Type: application/json")
+    @POST("chat/completions")
+    suspend fun chatCompletions(
+        @Header("Authorization") auth: String,
+        @Body request: GeneralLlmRequest
+    ): GeneralLlmResponse
+}
+
+// Google Models
+private data class GeminiRequest(val contents: List<GeminiContent>)
+private data class GeminiContent(val parts: List<GeminiPart>)
+private data class GeminiPart(val text: String)
+private data class GeminiResponse(val candidates: List<GeminiCandidate>?)
+private data class GeminiCandidate(val content: GeminiContent?)
+
+// General (OpenAI) Models
+private data class GeneralLlmRequest(val model: String, val messages: List<GeneralMessage>)
+private data class GeneralMessage(val role: String, val content: String)
+private data class GeneralLlmResponse(val choices: List<GeneralChoice>?)
+private data class GeneralChoice(val message: GeneralMessage?)

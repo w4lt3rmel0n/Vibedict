@@ -437,15 +437,21 @@ class SettingsViewModel(private val repository: UserPreferencesRepository) : Vie
             model = "gemini-flash-latest"
         )
         repository.addLLMProvider(newProvider)
+        val providers = repository.llmProviders.first()
+        DictionaryManager.updateLLMProviders(providers)
         onCreated(newId)
     }
 
     fun updateLLMProvider(provider: com.waltermelon.vibedict.data.LLMProvider) = viewModelScope.launch {
         repository.updateLLMProvider(provider)
+        val providers = repository.llmProviders.first()
+        DictionaryManager.updateLLMProviders(providers)
     }
 
     fun deleteLLMProvider(id: String) = viewModelScope.launch {
         repository.deleteLLMProvider(id)
+        val providers = repository.llmProviders.first()
+        DictionaryManager.updateLLMProviders(providers)
     }
 
     // --- AI Prompt Methods ---
