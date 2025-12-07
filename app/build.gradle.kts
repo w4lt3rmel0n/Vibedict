@@ -13,7 +13,7 @@ android {
         minSdk = 24
         targetSdk = 36
         versionCode = 1
-        versionName = "0.4.0"
+        versionName = "0.4.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         @Suppress("UnstableApiUsage")
@@ -44,11 +44,11 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
     kotlinOptions {
-        jvmTarget = "11"
+        jvmTarget = "17"
     }
     buildFeatures {
         compose = true
@@ -61,6 +61,17 @@ android {
     }
     ndkVersion = "27.0.12077973"
     buildToolsVersion = "36.1.0"
+    applicationVariants.all {
+        outputs.all {
+            val impl = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
+            val abi = impl.filters.find { it.filterType == "ABI" }?.identifier
+            if (abi != null) {
+                outputFileName = "Vibedict-${abi}.apk"
+            } else {
+                outputFileName = "Vibedict.apk"
+            }
+        }
+    }
 }
 
 dependencies {
@@ -81,7 +92,8 @@ dependencies {
     implementation(libs.androidx.documentfile)
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.google.material)
-    implementation(libs.google.generativeai)
+    implementation(libs.retrofit)
+    implementation(libs.retrofit.converter.gson)
     implementation(libs.jspeex)
     implementation(libs.reorderable)
 

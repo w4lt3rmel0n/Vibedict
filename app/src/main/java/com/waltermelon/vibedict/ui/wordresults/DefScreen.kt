@@ -211,63 +211,72 @@ fun DefScreen(
                 }
                 is DefUiState.Success -> {
                     val scrollState = rememberScrollState()
-                    val headerPositions = remember { mutableStateMapOf<Int, Float>() }
+// --- STICKY HEADER OVERLAY ---
                     val headerHeights = remember { mutableStateMapOf<Int, Int>() }
+                    val sectionPositions = remember { mutableStateMapOf<Int, Float>() }
+                    val sectionHeights = remember { mutableStateMapOf<Int, Int>() }
 
-                    Box(modifier = Modifier.fillMaxSize()) {
-                        // --- STICKY HEADER OVERLAY ---
-                        val stickyIndex = state.results.indices.lastOrNull { index ->
-                            val y = headerPositions[index] ?: Float.MAX_VALUE
-                            y <= scrollState.value
-                        } ?: -1
+                    val stickyIndex = state.results.indices.lastOrNull { index ->
+                        val y = sectionPositions[index] ?: Float.MAX_VALUE
+                        y <= scrollState.value
+                    } ?: -1
 
-                        if (stickyIndex != -1) {
-                            val stickyEntry = state.results[stickyIndex]
-                            val isExpanded = expandedStates.getOrDefault(stickyEntry.dictionaryName, stickyEntry.isExpandedByDefault)
-                            val selectedIndex = selectedIndices.getOrDefault(stickyEntry.id, 0)
-                            
-                            val nextHeaderY = headerPositions[stickyIndex + 1]
-                            val currentHeaderHeight = headerHeights[stickyIndex] ?: 0
-                            
-                            val offset = if (nextHeaderY != null && currentHeaderHeight > 0) {
-                                val intercept = nextHeaderY - scrollState.value
-                                if (intercept < currentHeaderHeight) intercept - currentHeaderHeight else 0f
-                            } else {
-                                0f
-                            }
-                            
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .zIndex(1f)
-                                    .graphicsLayer { translationY = offset }
-                            ) {
-                                DictionaryHeaderItem(
-                                    title = stickyEntry.dictionaryName,
-                                    isExpanded = isExpanded,
-                                    onToggle = { expandedStates[stickyEntry.dictionaryName] = !isExpanded },
-                                    isLoading = stickyEntry.isLoading,
-                                    entryCount = stickyEntry.entries.size,
-                                    selectedIndex = selectedIndex,
-                                    onSelectEntry = { newIndex -> selectedIndices[stickyEntry.id] = newIndex }
-                                )
-                            }
+                    if (stickyIndex != -1) {
+                        val stickyEntry = state.results[stickyIndex]
+                        val isExpanded = expandedStates.getOrDefault(stickyEntry.dictionaryName, stickyEntry.isExpandedByDefault)
+                        val selectedIndex = selectedIndices.getOrDefault(stickyEntry.id, 0)
+                        
+                        val sectionTop = sectionPositions[stickyIndex] ?: 0f
+                        val sectionHeight = sectionHeights[stickyIndex] ?: 0
+                        val sectionBottom = sectionTop + sectionHeight
+                        val currentHeaderHeight = headerHeights[stickyIndex] ?: 0
+                        
+                        // Calculate offset: push up if the bottom of the section hits the header
+                        val offset = if (sectionHeight > 0 && currentHeaderHeight > 0) {
+                            val distToBottom = sectionBottom - scrollState.value
+                            if (distToBottom < currentHeaderHeight) distToBottom - currentHeaderHeight else 0f
+                        } else {
+                            0f
                         }
-                        // -----------------------------
-
-                        Column(
+                        
+                        Box(
                             modifier = Modifier
-                                .fillMaxSize()
-                                .verticalScroll(scrollState)
+                                .fillMaxWidth()
+                                .zIndex(1f)
+                                .graphicsLayer { translationY = offset }
                         ) {
-                            state.results.forEachIndexed { index, entry ->
-                                key(entry.id) {
-                                    val isExpanded = expandedStates.getOrDefault(entry.dictionaryName, entry.isExpandedByDefault)
-                                    val selectedIndex = selectedIndices.getOrDefault(entry.id, 0)
+                            DictionaryHeaderItem(
+                                title = stickyEntry.dictionaryName,
+                                isExpanded = isExpanded,
+                                onToggle = { expandedStates[stickyEntry.dictionaryName] = !isExpanded },
+                                isLoading = stickyEntry.isLoading,
+                                entryCount = stickyEntry.entries.size,
+                                selectedIndex = selectedIndex,
+                                onSelectEntry = { newIndex -> selectedIndices[stickyEntry.id] = newIndex }
+                            )
+                        }
+                    }
+                    // -----------------------------
 
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(scrollState)
+                    ) {
+                        state.results.forEachIndexed { index, entry ->
+                            key(entry.id) {
+                                val isExpanded = expandedStates.getOrDefault(entry.dictionaryName, entry.isExpandedByDefault)
+                                val selectedIndex = selectedIndices.getOrDefault(entry.id, 0)
+
+                                // Wrap the entire section (Header + Body) to track its bounds
+                                Column(
+                                    modifier = Modifier.onGloballyPositioned { coordinates ->
+                                        sectionPositions[index] = coordinates.positionInParent().y
+                                        sectionHeights[index] = coordinates.size.height
+                                    }
+                                ) {
                                     Box(
                                         modifier = Modifier.onGloballyPositioned { coordinates ->
-                                            headerPositions[index] = coordinates.positionInParent().y
                                             headerHeights[index] = coordinates.size.height
                                         }
                                     ) {
