@@ -417,28 +417,54 @@ object DictionaryManager {
 
             } else {
                 dict.mdxEngine?.let { engine ->
-                    // Helper function to resolve redirects recursively
-                    fun resolve(w: String, depth: Int): List<String> {
-                        if (depth > 5) return emptyList()
+                    // Helper function to resolve redirects recursively with size safety
+                    fun resolve(w: String, depth: Int, currentSize: Long): Pair<List<String>, Long> {
+                        if (depth > 5) return Pair(emptyList(), currentSize)
+                        if (currentSize > 5 * 1024 * 1024) return Pair(emptyList(), currentSize) // 5MB Limit
+
                         val defs = engine.lookup(w)
                         val finalDefs = mutableListOf<String>()
+                        var size = currentSize
+
                         for (d in defs) {
+                            if (size > 25 * 1024 * 1024) break // Stop if we've accumulated too much data (Global Limit: 25MB)
+
                             if (d.startsWith("@@@LINK=")) {
                                 val target = d.substringAfter("@@@LINK=").trim()
-                                finalDefs.addAll(resolve(target, depth + 1))
+                                val (resolved, newSize) = resolve(target, depth + 1, size)
+                                finalDefs.addAll(resolved)
+                                size = newSize
                             } else {
+                                val entrySize = d.length * 2L
+                                // Safety Check: If a single entry is huge (> 10MB), skip it or truncate it to prevent OOM
+                                if (entrySize > 10 * 1024 * 1024) {
+                                    finalDefs.add("<div class='error'>Content too large to display (${entrySize / 1024 / 1024} MB).</div>")
+                                    // Add a small amount to size to reflect the error message
+                                    size += 200 
+                                    continue
+                                }
+
+                                // Safety Check: Will adding this exceed the global limit?
+                                if (size + entrySize > 25 * 1024 * 1024) {
+                                    finalDefs.add("<div class='error'>Total content limit exceeded. Some definitions are hidden.</div>")
+                                    size += 200
+                                    break
+                                }
+
                                 finalDefs.add(d)
+                                size += entrySize 
                             }
                         }
-                        return finalDefs
+                        return Pair(finalDefs, size)
                     }
 
-                    val definitions = resolve(word, 0)
+                    val (definitions, _) = resolve(word, 0, 0L)
                     if (definitions.isNotEmpty()) {
                         // --- DEDUPLICATION & RETURN LIST ---
                         // Sort by length descending to prioritize "primary" (content-rich) entries
                         return@withContext definitions.distinct().sortedByDescending { it.length }
                     }
+
                 }
             }
         } catch (e: Exception) {

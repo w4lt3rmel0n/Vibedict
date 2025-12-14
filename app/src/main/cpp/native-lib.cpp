@@ -231,8 +231,31 @@ Java_com_waltermelon_vibedict_data_MdictEngine_getFullTextSuggestionsNative(
             
             if (onProgressMethod != nullptr) {
                 globalListener = env->NewGlobalRef(listener);
-                progress_cb = [env, globalListener, onProgressMethod](float progress) {
-                    env->CallVoidMethod(globalListener, onProgressMethod, progress);
+                
+                JavaVM* jvm = nullptr;
+                env->GetJavaVM(&jvm);
+                
+                progress_cb = [jvm, globalListener, onProgressMethod](float progress) {
+                    JNIEnv* myEnv = nullptr;
+                    bool didAttach = false;
+                    
+                    if (jvm == nullptr) return;
+
+                    jint res = jvm->GetEnv((void**)&myEnv, JNI_VERSION_1_6);
+                    if (res == JNI_EDETACHED) {
+                        if (jvm->AttachCurrentThread(&myEnv, nullptr) != JNI_OK) {
+                            return;
+                        }
+                        didAttach = true;
+                    }
+                    
+                    if (myEnv != nullptr) {
+                        myEnv->CallVoidMethod(globalListener, onProgressMethod, progress);
+                    }
+                    
+                    if (didAttach) {
+                        jvm->DetachCurrentThread();
+                    }
                 };
             }
         }
