@@ -1,5 +1,6 @@
 package com.waltermelon.vibedict.ui.settings
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -95,31 +96,28 @@ fun CollectionDetailScreen(
         }
     }
 
+    val saveAndExit = {
+        val id = collection?.id ?: UUID.randomUUID().toString()
+        viewModel.saveCollection(
+            DictCollection(
+                id,
+                name.ifBlank { unnamedText },
+                if (isDefault) emptyList() else selectedIds.toList(),
+                autoExpandIds.toList()
+            )
+        )
+        navController.popBackStack()
+    }
+
+    BackHandler(onBack = { saveAndExit() })
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text(if (isNew) stringResource(R.string.new_collection) else stringResource(R.string.edit_collection)) },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = { saveAndExit() }) {
                         Icon(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.back))
-                    }
-                },
-                actions = {
-                    TextButton(
-                        onClick = {
-                            val id = collection?.id ?: UUID.randomUUID().toString()
-                            viewModel.saveCollection(
-                                DictCollection(
-                                    id,
-                                    name.ifBlank { unnamedText },
-                                    if (isDefault) emptyList() else selectedIds.toList(),
-                                    autoExpandIds.toList()
-                                )
-                            )
-                            navController.popBackStack()
-                        }
-                    ) {
-                        Text(stringResource(R.string.save))
                     }
                 }
             )
