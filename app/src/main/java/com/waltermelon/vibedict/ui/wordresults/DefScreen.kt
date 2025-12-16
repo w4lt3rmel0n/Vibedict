@@ -276,6 +276,7 @@ fun DefScreen(
                                             // Serve local fonts
                                             if (url.startsWith("https://waltermelon.app/fonts/")) {
                                                 val requestedFileNameEncoded = url.substringAfter("https://waltermelon.app/fonts/")
+                                                android.util.Log.d("MdictJNI", "Intercepting font request: $requestedFileNameEncoded")
                                                 try {
                                                     val requestedFileName = java.net.URLDecoder.decode(requestedFileNameEncoded, "UTF-8")
                                                     
@@ -289,6 +290,8 @@ fun DefScreen(
                                                         val mime = when (requestedFileName.substringAfterLast('.').lowercase()) {
                                                             "ttf" -> "font/ttf"
                                                             "otf" -> "font/otf"
+                                                            "woff" -> "font/woff"
+                                                            "woff2" -> "font/woff2"
                                                             else -> "application/octet-stream"
                                                         }
                                                         return WebResourceResponse(mime, "UTF-8", FileInputStream(fontFile))
@@ -713,6 +716,8 @@ fun DictionaryBodyItem(
             "js" -> "application/javascript"
             "ttf" -> "font/ttf"
             "otf" -> "font/otf"
+            "woff" -> "font/woff"
+            "woff2" -> "font/woff2"
             else -> "application/octet-stream"
         }
     }
@@ -918,7 +923,26 @@ fun DictionaryBodyItem(
                                 } else { "" }
 
                                 // --- FONT INJECTION ---
-                                val fontCss = if (customFontPaths.isNotEmpty()) {
+                                // 1. Base Default Font (Roboto Flex) - Injected FIRST as fallback if no other font specified
+                                val defaultFontCss = """
+                                    @font-face {
+                                        font-family: 'Roboto Flex';
+                                        font-style: normal;
+                                        src: url('https://waltermelon.app/fonts/roboto_flex.ttf');
+                                    }
+                                    @font-face {
+                                        font-family: 'Roboto Flex';
+                                        font-style: italic;
+                                        src: url('https://waltermelon.app/fonts/roboto_flex.ttf');
+                                        font-variation-settings: 'slnt' -10;
+                                    }
+                                    body {
+                                        font-family: 'Roboto Flex', sans-serif;
+                                    }
+                                """
+
+                                // 2. User Custom Font Override - Injected LAST with !important to override everything
+                                val userFontCss = if (customFontPaths.isNotEmpty()) {
                                     android.util.Log.d("MdictJNI", "Generating CSS for fonts: $customFontPaths")
                                     val fontList = customFontPaths.split(",").filter { it.isNotBlank() }
                                     val fontFaceDeclarations = fontList.joinToString("\n") { path ->
@@ -937,23 +961,8 @@ fun DictionaryBodyItem(
                                     // Apply to body with high specificity
                                     "$fontFaceDeclarations\nbody { font-family: '$firstFontFamily', sans-serif !important; }"
                                 } else { 
-                                    android.util.Log.d("MdictJNI", "Using default app font: Roboto Flex")
-                                    """
-                                    @font-face {
-                                        font-family: 'Roboto Flex';
-                                        font-style: normal;
-                                        src: url('https://waltermelon.app/fonts/roboto_flex.ttf');
-                                    }
-                                    @font-face {
-                                        font-family: 'Roboto Flex';
-                                        font-style: italic;
-                                        src: url('https://waltermelon.app/fonts/roboto_flex.ttf');
-                                        font-variation-settings: 'slnt' -10;
-                                    }
-                                    body {
-                                        font-family: 'Roboto Flex', sans-serif;
-                                    }
-                                    """
+                                    android.util.Log.d("MdictJNI", "Using default app font as base: Roboto Flex")
+                                    ""
                                 }
                                 // ----------------------
 
@@ -967,8 +976,8 @@ fun DictionaryBodyItem(
                                 val fontSizeCss = "html { zoom: $zoomPercent%; }"
                                 // ---------------------------
 
-                                // Inject fontSizeCss BEFORE fontCss to ensure font properties on body take precedence if any conflict arose
-                                val finalCss = "$sanitizedCustomCss\n$transparencyCss\n$darkModeCss\n$fontSizeCss\n$fontCss"
+                                // ORDER: Default (Fallback) -> Custom (Dict) -> System (Dark/Zoom) -> User Override
+                                val finalCss = "$defaultFontCss\n$sanitizedCustomCss\n$transparencyCss\n$darkModeCss\n$fontSizeCss\n$userFontCss"
                                 android.util.Log.d("MdictJNI", "Final CSS injected (last 200 chars): ${finalCss.takeLast(200)}")
 
                                 val linkFixerJs = """

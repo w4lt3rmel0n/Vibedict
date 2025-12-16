@@ -16,6 +16,7 @@ import retrofit2.http.Headers
 import retrofit2.http.POST
 import retrofit2.http.Query
 import retrofit2.http.Url
+import java.io.IOException
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "user_settings")
 
@@ -594,6 +595,129 @@ class UserPreferencesRepository(private val context: Context) {
 
         if (hasChanges) {
             prefs[Keys.COLLECTIONS] = serializeCollections(updatedList)
+        }
+    }
+
+    // --- NEW: Profile Export/Import ---
+
+    enum class BackupCategory {
+        DICTIONARY_CONFIG,
+        AI_PROMPTS,
+        WEB_SEARCH,
+        COLLECTIONS,
+        BOOKMARKS
+    }
+
+    fun exportPreferences(categories: Set<BackupCategory>): Flow<String> = dataStore.data.map { prefs ->
+        val json = JSONObject()
+        prefs.asMap().forEach { (key, value) ->
+            val keyName = key.name
+            var shouldInclude = false
+
+            // Categorize keys
+            if (categories.contains(BackupCategory.DICTIONARY_CONFIG)) {
+                if (keyName.startsWith("dict_")) shouldInclude = true
+                if (keyName == Keys.DICTIONARY_DIRS.name) shouldInclude = true
+            }
+            if (categories.contains(BackupCategory.AI_PROMPTS)) {
+                if (keyName == Keys.AI_PROMPTS.name) shouldInclude = true
+            }
+            if (categories.contains(BackupCategory.WEB_SEARCH)) {
+                if (keyName == Keys.WEB_SEARCH_ENGINES.name) shouldInclude = true
+            }
+            if (categories.contains(BackupCategory.COLLECTIONS)) {
+                if (keyName == Keys.COLLECTIONS.name) shouldInclude = true
+                if (keyName == Keys.ACTIVE_COLLECTION_ID.name) shouldInclude = true
+            }
+            if (categories.contains(BackupCategory.BOOKMARKS)) {
+                if (keyName == Keys.BOOKMARKS.name) shouldInclude = true
+            }
+
+            // Exclude everything else (General Settings, LLM Providers, History, etc.)
+            // Note: LLM Providers (API Keys) are strictly excluded as per requirements.
+
+            if (shouldInclude) {
+                when (value) {
+                    is Set<*> -> json.put(keyName, JSONArray(value))
+                    else -> json.put(keyName, value)
+                }
+            }
+        }
+        json.toString(2)
+    }
+
+    suspend fun importPreferences(jsonString: String, categories: Set<BackupCategory>) = dataStore.edit { prefs ->
+        try {
+            val json = JSONObject(jsonString)
+            // Do NOT clear all prefs as we might be partiailly restoring.
+            // prefs.clear() 
+
+            val keysIterator = json.keys()
+            while (keysIterator.hasNext()) {
+                val keyName = keysIterator.next()
+                if (!json.has(keyName)) continue
+                val value = json.get(keyName)
+
+                var shouldRestore = false
+                
+                // Check if this key belongs to a selected category
+                 if (categories.contains(BackupCategory.DICTIONARY_CONFIG)) {
+                    if (keyName.startsWith("dict_")) shouldRestore = true
+                    if (keyName == Keys.DICTIONARY_DIRS.name) shouldRestore = true
+                }
+                if (categories.contains(BackupCategory.AI_PROMPTS)) {
+                    if (keyName == Keys.AI_PROMPTS.name) shouldRestore = true
+                }
+                if (categories.contains(BackupCategory.WEB_SEARCH)) {
+                    if (keyName == Keys.WEB_SEARCH_ENGINES.name) shouldRestore = true
+                }
+                if (categories.contains(BackupCategory.COLLECTIONS)) {
+                    if (keyName == Keys.COLLECTIONS.name) shouldRestore = true
+                    if (keyName == Keys.ACTIVE_COLLECTION_ID.name) shouldRestore = true
+                }
+                if (categories.contains(BackupCategory.BOOKMARKS)) {
+                    if (keyName == Keys.BOOKMARKS.name) shouldRestore = true
+                }
+
+                if (shouldRestore) {
+                     // Helper to match dynamic keys (Same as before but filtered)
+                    if (keyName.startsWith("dict_css_")) {
+                        prefs[stringPreferencesKey(keyName)] = value as String
+                    } else if (keyName.startsWith("dict_js_")) {
+                        prefs[stringPreferencesKey(keyName)] = value as String
+                    } else if (keyName.startsWith("dict_name_")) {
+                        prefs[stringPreferencesKey(keyName)] = value as String
+                    } else if (keyName.startsWith("dict_force_style_")) {
+                        prefs[booleanPreferencesKey(keyName)] = value as Boolean
+                    } else if (keyName.startsWith("dict_font_path_")) {
+                        prefs[stringPreferencesKey(keyName)] = value as String
+                    } else {
+                        // Match static keys
+                        when (keyName) {
+                            Keys.DICTIONARY_DIRS.name -> {
+                                val set = mutableSetOf<String>()
+                                val array = value as JSONArray
+                                for (i in 0 until array.length()) set.add(array.getString(i))
+                                prefs[Keys.DICTIONARY_DIRS] = set
+                            }
+                            Keys.BOOKMARKS.name -> {
+                                val set = mutableSetOf<String>()
+                                val array = value as JSONArray
+                                for (i in 0 until array.length()) set.add(array.getString(i))
+                                prefs[Keys.BOOKMARKS] = set
+                            }
+                            Keys.WEB_SEARCH_ENGINES.name -> prefs[Keys.WEB_SEARCH_ENGINES] = value as String
+                            Keys.COLLECTIONS.name -> prefs[Keys.COLLECTIONS] = value as String
+                            Keys.ACTIVE_COLLECTION_ID.name -> prefs[Keys.ACTIVE_COLLECTION_ID] = value as String
+                            Keys.AI_PROMPTS.name -> prefs[Keys.AI_PROMPTS] = value as String
+                        }
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            // Throw so UI can show error
+            throw IOException("Failed to parse backup file")
         }
     }
 }

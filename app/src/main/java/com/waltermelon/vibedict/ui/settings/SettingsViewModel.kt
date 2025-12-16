@@ -548,6 +548,48 @@ class SettingsViewModel(private val repository: UserPreferencesRepository) : Vie
         }
     }
 
+    // --- NEW: Profile Export/Import ---
+
+    fun exportProfile(context: Context, uri: Uri, categories: Set<UserPreferencesRepository.BackupCategory>) = viewModelScope.launch(Dispatchers.IO) {
+        try {
+            val json = repository.exportPreferences(categories).first()
+            context.contentResolver.openOutputStream(uri)?.use { outputStream ->
+                outputStream.write(json.toByteArray())
+            }
+            launch(Dispatchers.Main) {
+                android.widget.Toast.makeText(context, "Profile Exported Successfully", android.widget.Toast.LENGTH_SHORT).show()
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            launch(Dispatchers.Main) {
+                android.widget.Toast.makeText(context, "Export Failed: ${e.message}", android.widget.Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    fun importProfile(context: Context, uri: Uri, categories: Set<UserPreferencesRepository.BackupCategory>) = viewModelScope.launch(Dispatchers.IO) {
+        try {
+            val json = context.contentResolver.openInputStream(uri)?.bufferedReader().use { it?.readText() }
+            if (json != null) {
+                repository.importPreferences(json, categories)
+                // Reload dictionaries to reflect potential changes in dictionary directories or collections
+                launch(Dispatchers.Main) {
+                    reloadAllDictionaries(context)
+                    android.widget.Toast.makeText(context, "Profile Restored Successfully", android.widget.Toast.LENGTH_SHORT).show()
+                }
+            } else {
+                launch(Dispatchers.Main) {
+                    android.widget.Toast.makeText(context, "Failed to read file", android.widget.Toast.LENGTH_SHORT).show()
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            launch(Dispatchers.Main) {
+                android.widget.Toast.makeText(context, "Import Failed: ${e.message}", android.widget.Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
     class SettingsViewModelFactory(private val repository: UserPreferencesRepository) :
         ViewModelProvider.Factory {
         override fun <T : ViewModel> create(modelClass: Class<T>): T {

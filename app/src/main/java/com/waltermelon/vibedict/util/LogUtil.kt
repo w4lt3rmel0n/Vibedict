@@ -93,4 +93,16 @@ object LogUtil {
         }
         context.startActivity(Intent.createChooser(intent, "Share Logs"))
     }
+
+    fun saveLogsToUri(context: Context, uri: android.net.Uri, logs: String): Boolean {
+        return try {
+            context.contentResolver.openOutputStream(uri)?.use { outputStream ->
+                outputStream.write(logs.toByteArray())
+            }
+            true
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
+        }
+    }
 }
