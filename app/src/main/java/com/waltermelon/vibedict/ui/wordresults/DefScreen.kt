@@ -733,7 +733,14 @@ fun DictionaryBodyItem(
                                     """
                                     @font-face {
                                         font-family: 'Roboto Flex';
+                                        font-style: normal;
                                         src: url('https://waltermelon.app/fonts/roboto_flex.ttf');
+                                    }
+                                    @font-face {
+                                        font-family: 'Roboto Flex';
+                                        font-style: italic;
+                                        src: url('https://waltermelon.app/fonts/roboto_flex.ttf');
+                                        font-variation-settings: 'slnt' -10;
                                     }
                                     body {
                                         font-family: 'Roboto Flex', sans-serif;
