@@ -269,6 +269,9 @@ fun DefScreen(
                                     webViewClient = object : WebViewClient() {
                                         override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {
                                             val url = request?.url?.toString() ?: ""
+                                            if (url.startsWith("https://waltermelon.app/")) {
+                                                android.util.Log.d("MdictJNI", "WebView Request Intercepted: $url")
+                                            }
                                             
                                             // Serve local fonts
                                             if (url.startsWith("https://waltermelon.app/fonts/")) {
@@ -297,7 +300,7 @@ fun DefScreen(
                                             
                                             // Serve MDD resources - need to determine which dict this is for
                                             var resourceKey = ""
-                                            if (url.startsWith("https://waltermelon.app/") && !url.startsWith("https://waltermelon.app/fonts/")) {
+                                            if (url.startsWith("https://waltermelon.app/")) {
                                                 if (url != "https://waltermelon.app/") {
                                                     resourceKey = url.substringAfter("https://waltermelon.app/")
                                                 }
