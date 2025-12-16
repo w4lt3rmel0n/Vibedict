@@ -36,10 +36,56 @@ class CustomWebView(context: Context) : WebView(context) {
         }
 
         private fun addDefineItem(menu: Menu) {
-            // Add "Define" item if not present, at index 0 to be first
-            if (menu.findItem(MENU_ITEM_DEFINE_ID) == null) {
-                menu.add(Menu.NONE, MENU_ITEM_DEFINE_ID, 0, context.getString(com.waltermelon.vibedict.R.string.define))
-                    .setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM)
+            // Data class to hold menu item info including Intent
+            data class MenuItemInfo(
+                val itemId: Int,
+                val groupId: Int,
+                val order: Int,
+                val title: CharSequence,
+                val intent: android.content.Intent?,
+                val icon: android.graphics.drawable.Drawable?
+            )
+            
+            // Collect existing items (excluding our Define item and self-referential Vibedict items)
+            val existingItems = mutableListOf<MenuItemInfo>()
+            val ownPackage = context.packageName // "com.waltermelon.vibedict"
+            
+            for (i in 0 until menu.size()) {
+                val item = menu.getItem(i)
+                // Skip our own Define item
+                if (item.itemId == MENU_ITEM_DEFINE_ID) continue
+                
+                // Skip items that point to our own app (self-referential Vibedict)
+                val itemIntent = item.intent
+                if (itemIntent != null) {
+                    val targetPackage = itemIntent.component?.packageName ?: itemIntent.`package`
+                    if (targetPackage == ownPackage) continue
+                }
+                
+                existingItems.add(MenuItemInfo(
+                    itemId = item.itemId,
+                    groupId = item.groupId,
+                    order = item.order,
+                    title = item.title ?: "",
+                    intent = item.intent,
+                    icon = item.icon
+                ))
+            }
+            
+            // Clear menu and rebuild with Define first
+            menu.clear()
+            
+            // Add Define item first with order 0
+            menu.add(Menu.NONE, MENU_ITEM_DEFINE_ID, 0, context.getString(com.waltermelon.vibedict.R.string.define))
+                .setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM)
+            
+            // Re-add other items with incrementing order starting from 1, preserving Intent
+            existingItems.forEachIndexed { index, info ->
+                val newItem = menu.add(info.groupId, info.itemId, index + 1, info.title)
+                newItem.setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM)
+                // Restore Intent so external services work
+                info.intent?.let { newItem.intent = it }
+                info.icon?.let { newItem.icon = it }
             }
         }
 
