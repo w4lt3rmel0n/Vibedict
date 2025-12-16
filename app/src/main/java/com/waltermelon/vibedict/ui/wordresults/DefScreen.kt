@@ -558,6 +558,12 @@ fun DictionaryBodyItem(
                                         android.util.Log.d("MdictJNI", "Intercepting font request: $requestedFileNameEncoded")
                                          try {
                                             val requestedFileName = java.net.URLDecoder.decode(requestedFileNameEncoded, "UTF-8")
+                                            
+                                            if (requestedFileName == "roboto_flex.ttf") {
+                                                val inputStream = ctx.resources.openRawResource(R.font.roboto_flex)
+                                                return WebResourceResponse("font/ttf", "UTF-8", inputStream)
+                                            }
+
                                             val fontFile = File(ctx.filesDir, "fonts/$requestedFileName")
                                             
                                             if (fontFile.exists()) {
@@ -723,8 +729,16 @@ fun DictionaryBodyItem(
                                     // Apply to body with high specificity
                                     "$fontFaceDeclarations\nbody { font-family: '$firstFontFamily', sans-serif !important; }"
                                 } else { 
-                                    android.util.Log.d("MdictJNI", "No custom fonts found.")
-                                    "" 
+                                    android.util.Log.d("MdictJNI", "Using default app font: Roboto Flex")
+                                    """
+                                    @font-face {
+                                        font-family: 'Roboto Flex';
+                                        src: url('https://waltermelon.app/fonts/roboto_flex.ttf');
+                                    }
+                                    body {
+                                        font-family: 'Roboto Flex', sans-serif;
+                                    }
+                                    """
                                 }
                                 // ----------------------
 
