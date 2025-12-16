@@ -47,6 +47,8 @@
     <string name="pref_text_size">Display size</string>
     <string name="pref_keep_screen_on">Keep screen on</string>
     <string name="pref_keep_screen_on_subtitle">Screen stays on while app is open</string>
+    <string name="pref_pinch_mode">Pinch-to-zoom</string>
+    <string name="pref_pinch_mode_subtitle">Renders content in an integrated HTML view with pinch-to-zoom</string>
 
     <string name="pref_manage_dicts">Manage dictionaries</string>
     <string name="pref_manage_dicts_subtitle">Add or remove dictionaries</string>

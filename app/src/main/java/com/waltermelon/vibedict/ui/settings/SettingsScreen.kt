@@ -80,6 +80,7 @@ fun SettingsScreen(
 
     val instantSearch by viewModel.instantSearch.collectAsState()
     val useWildcard by viewModel.useWildcard.collectAsState()
+    val useWebViewMode by viewModel.useWebViewMode.collectAsState()
 
     var showLanguageDialog by remember { mutableStateOf(false) }
     var showDarkModeDialog by remember { mutableStateOf(false) }
@@ -115,7 +116,9 @@ fun SettingsScreen(
                     onSliderPositionChange = { viewModel.setDisplayScale(it) },
 
                     keepScreenOn = keepScreenOn,
-                    onKeepScreenOnChange = { viewModel.setKeepScreenOn(it) }
+                    onKeepScreenOnChange = { viewModel.setKeepScreenOn(it) },
+                    useWebViewMode = useWebViewMode,
+                    onUseWebViewModeChange = { viewModel.setUseWebViewMode(it) }
                 )
             }
 
@@ -200,7 +203,9 @@ private fun InterfaceSettingsCard(
     onSliderPositionChange: (Float) -> Unit,
 
     keepScreenOn: Boolean,
-    onKeepScreenOnChange: (Boolean) -> Unit
+    onKeepScreenOnChange: (Boolean) -> Unit,
+    useWebViewMode: Boolean,
+    onUseWebViewModeChange: (Boolean) -> Unit
 ) {
     SettingsCard(title = stringResource(R.string.pref_interface)) {
         SettingsRow(
@@ -248,6 +253,15 @@ private fun InterfaceSettingsCard(
             subtitle = stringResource(R.string.pref_keep_screen_on_subtitle),
             trailingContent = {
                 Switch(checked = keepScreenOn, onCheckedChange = onKeepScreenOnChange)
+            }
+        )
+
+        SettingsRow(
+            icon = Icons.Outlined.Pinch,
+            title = stringResource(R.string.pref_pinch_mode),
+            subtitle = stringResource(R.string.pref_pinch_mode_subtitle),
+            trailingContent = {
+                Switch(checked = useWebViewMode, onCheckedChange = onUseWebViewModeChange)
             }
         )
 

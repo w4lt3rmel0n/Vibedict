@@ -64,6 +64,11 @@ class SettingsViewModel(private val repository: UserPreferencesRepository) : Vie
         SharingStarted.WhileSubscribed(5000),
         false
     )
+    val useWebViewMode = repository.useWebViewMode.stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(5000),
+        false
+    )
     val dictionaryDirs = repository.dictionaryDirectories.stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(5000),
@@ -180,6 +185,8 @@ class SettingsViewModel(private val repository: UserPreferencesRepository) : Vie
         viewModelScope.launch { repository.setInstantSearch(enabled) }
     fun setUseWildcard(enabled: Boolean) =
         viewModelScope.launch { repository.setUseWildcard(enabled) }
+    fun setUseWebViewMode(enabled: Boolean) =
+        viewModelScope.launch { repository.setUseWebViewMode(enabled) }
 
     fun addDictionaryFolder(context: Context, uri: Uri) = viewModelScope.launch {
         try {

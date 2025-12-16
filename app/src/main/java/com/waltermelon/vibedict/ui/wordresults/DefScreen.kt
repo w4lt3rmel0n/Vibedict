@@ -40,6 +40,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
@@ -48,6 +49,7 @@ import androidx.navigation.NavController
 import com.waltermelon.vibedict.ui.theme.Screen
 import com.waltermelon.vibedict.data.DictionaryManager
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.LocalContext
 import com.waltermelon.vibedict.R
 import kotlinx.coroutines.launch
 import java.io.ByteArrayInputStream
@@ -70,6 +72,12 @@ data class FindNavEvent(val forward: Boolean, val timestamp: Long = System.curre
     val isLoading: Boolean = false // --- NEW: Individual Loading State ---
 )
 
+// Helper function to convert Compose Color to hex string
+private fun colorToHex(color: Color): String {
+    val argb = color.toArgb()
+    return String.format("#%06X", 0xFFFFFF and argb)
+}
+
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun DefScreen(
@@ -77,10 +85,12 @@ fun DefScreen(
     word: String,
     viewModel: DefViewModel
 ) {
+    val context = LocalContext.current
     var showMenu by remember { mutableStateOf(false) }
     val uiState by viewModel.uiState.collectAsState()
     val isBookmarked by viewModel.isBookmarked.collectAsState()
     val displayScale by viewModel.displayScale.collectAsState()
+    val useWebViewMode by viewModel.useWebViewMode.collectAsState()
 
     // Navigation Logic
     val navigateToWord by viewModel.navigateToWord.collectAsState()
@@ -210,110 +220,305 @@ fun DefScreen(
                     }
                 }
                 is DefUiState.Success -> {
-                    val scrollState = rememberScrollState()
-// --- STICKY HEADER OVERLAY ---
-                    val headerHeights = remember { mutableStateMapOf<Int, Int>() }
-                    val sectionPositions = remember { mutableStateMapOf<Int, Float>() }
-                    val sectionHeights = remember { mutableStateMapOf<Int, Int>() }
-
-                    val stickyIndex = state.results.indices.lastOrNull { index ->
-                        val y = sectionPositions[index] ?: Float.MAX_VALUE
-                        y <= scrollState.value
-                    } ?: -1
-
-                    if (stickyIndex != -1) {
-                        val stickyEntry = state.results[stickyIndex]
-                        val isExpanded = expandedStates.getOrDefault(stickyEntry.dictionaryName, stickyEntry.isExpandedByDefault)
-                        val selectedIndex = selectedIndices.getOrDefault(stickyEntry.id, 0)
-                        
-                        val sectionTop = sectionPositions[stickyIndex] ?: 0f
-                        val sectionHeight = sectionHeights[stickyIndex] ?: 0
-                        val sectionBottom = sectionTop + sectionHeight
-                        val currentHeaderHeight = headerHeights[stickyIndex] ?: 0
-                        
-                        // Calculate offset: push up if the bottom of the section hits the header
-                        val offset = if (sectionHeight > 0 && currentHeaderHeight > 0) {
-                            val distToBottom = sectionBottom - scrollState.value
-                            if (distToBottom < currentHeaderHeight) distToBottom - currentHeaderHeight else 0f
-                        } else {
-                            0f
-                        }
-                        
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .zIndex(1f)
-                                .graphicsLayer { translationY = offset }
-                        ) {
-                            DictionaryHeaderItem(
-                                title = stickyEntry.dictionaryName,
-                                isExpanded = isExpanded,
-                                onToggle = { expandedStates[stickyEntry.dictionaryName] = !isExpanded },
-                                isLoading = stickyEntry.isLoading,
-                                entryCount = stickyEntry.entries.size,
-                                selectedIndex = selectedIndex,
-                                onSelectEntry = { newIndex -> selectedIndices[stickyEntry.id] = newIndex }
-                            )
+                    val backgroundColor = MaterialTheme.colorScheme.background
+                    val isDarkTheme = remember(backgroundColor) { backgroundColor.luminance() < 0.5f }
+                    
+                    // Collect Material You theme colors for WebView mode
+                    val themeColors = ThemeColors(
+                        background = colorToHex(MaterialTheme.colorScheme.background),
+                        onBackground = colorToHex(MaterialTheme.colorScheme.onBackground),
+                        primary = colorToHex(MaterialTheme.colorScheme.primary),
+                        primaryContainer = colorToHex(MaterialTheme.colorScheme.primaryContainer),
+                        onPrimaryContainer = colorToHex(MaterialTheme.colorScheme.onPrimaryContainer),
+                        outline = colorToHex(MaterialTheme.colorScheme.outline),
+                        onSurface = colorToHex(MaterialTheme.colorScheme.onSurface),
+                        surface = colorToHex(MaterialTheme.colorScheme.surface)
+                    )
+                    
+                    // Collect font paths for all entries for WebView mode
+                    val fontPathsMap = remember { mutableStateMapOf<String, String>() }
+                    state.results.forEach { entry ->
+                        val paths by viewModel.getFontPaths(entry.id).collectAsState(initial = entry.customFontPaths)
+                        LaunchedEffect(paths) {
+                            fontPathsMap[entry.id] = paths
                         }
                     }
-                    // -----------------------------
-
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .verticalScroll(scrollState)
-                    ) {
-                        state.results.forEachIndexed { index, entry ->
-                            key(entry.id) {
-                                val isExpanded = expandedStates.getOrDefault(entry.dictionaryName, entry.isExpandedByDefault)
-                                val selectedIndex = selectedIndices.getOrDefault(entry.id, 0)
-
-                                // Wrap the entire section (Header + Body) to track its bounds
-                                Column(
-                                    modifier = Modifier.onGloballyPositioned { coordinates ->
-                                        sectionPositions[index] = coordinates.positionInParent().y
-                                        sectionHeights[index] = coordinates.size.height
+                    
+                    if (useWebViewMode) {
+                        // --- WEBVIEW MODE: Single full-page WebView with pinch-to-zoom ---
+                        val coroutineScope = rememberCoroutineScope()
+                        
+                        AndroidView(
+                            factory = { ctx ->
+                                AdBlocker.init(ctx)
+                                
+                                CustomWebView(ctx).apply {
+                                    onDefineRequested = { selectedText ->
+                                        navController.navigate(Screen.createRouteForWord(selectedText))
                                     }
-                                ) {
-                                    Box(
+                                    @android.annotation.SuppressLint("SetJavaScriptEnabled")
+                                    settings.javaScriptEnabled = true
+                                    settings.domStorageEnabled = true
+                                    settings.builtInZoomControls = true
+                                    settings.displayZoomControls = false
+                                    settings.setSupportZoom(true)
+                                    settings.useWideViewPort = true
+                                    settings.loadWithOverviewMode = true
+                                    setBackgroundColor(if (isDarkTheme) 0xFF121212.toInt() else 0xFFFFFFFF.toInt())
+                                    
+                                    webViewClient = object : WebViewClient() {
+                                        override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {
+                                            val url = request?.url?.toString() ?: ""
+                                            
+                                            // Serve local fonts
+                                            if (url.startsWith("https://waltermelon.app/fonts/")) {
+                                                val requestedFileNameEncoded = url.substringAfter("https://waltermelon.app/fonts/")
+                                                try {
+                                                    val requestedFileName = java.net.URLDecoder.decode(requestedFileNameEncoded, "UTF-8")
+                                                    
+                                                    if (requestedFileName == "roboto_flex.ttf") {
+                                                        val inputStream = ctx.resources.openRawResource(R.font.roboto_flex)
+                                                        return WebResourceResponse("font/ttf", "UTF-8", inputStream)
+                                                    }
+                                                    
+                                                    val fontFile = File(ctx.filesDir, "fonts/$requestedFileName")
+                                                    if (fontFile.exists()) {
+                                                        val mime = when (requestedFileName.substringAfterLast('.').lowercase()) {
+                                                            "ttf" -> "font/ttf"
+                                                            "otf" -> "font/otf"
+                                                            else -> "application/octet-stream"
+                                                        }
+                                                        return WebResourceResponse(mime, "UTF-8", FileInputStream(fontFile))
+                                                    }
+                                                } catch (e: Exception) {
+                                                    e.printStackTrace()
+                                                }
+                                            }
+                                            
+                                            // Serve MDD resources - need to determine which dict this is for
+                                            var resourceKey = ""
+                                            if (url.startsWith("https://waltermelon.app/") && !url.startsWith("https://waltermelon.app/fonts/")) {
+                                                if (url != "https://waltermelon.app/") {
+                                                    resourceKey = url.substringAfter("https://waltermelon.app/")
+                                                }
+                                            }
+                                            
+                                            if (resourceKey.isNotEmpty()) {
+                                                try {
+                                                    val decodedKey = java.net.URLDecoder.decode(resourceKey, "UTF-8")
+                                                    val resourceData = DictionaryManager.getResourceByKey(decodedKey)
+                                                    if (resourceData != null) {
+                                                        val mimeType = when (decodedKey.substringAfterLast('.').lowercase()) {
+                                                            "png" -> "image/png"
+                                                            "jpg", "jpeg" -> "image/jpeg"
+                                                            "gif" -> "image/gif"
+                                                            "css" -> "text/css"
+                                                            "js" -> "application/javascript"
+                                                            else -> "application/octet-stream"
+                                                        }
+                                                        return WebResourceResponse(mimeType, null, ByteArrayInputStream(resourceData))
+                                                    }
+                                                } catch (e: Exception) {
+                                                    e.printStackTrace()
+                                                }
+                                            }
+                                            
+                                            // AdBlocker
+                                            if (AdBlocker.isAd(url)) {
+                                                return WebResourceResponse("text/plain", "UTF-8", ByteArrayInputStream(ByteArray(0)))
+                                            }
+                                            
+                                            return super.shouldInterceptRequest(view, request)
+                                        }
+                                        
+                                        override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
+                                            val url = request?.url?.toString() ?: ""
+                                            
+                                            // Handle entry selection
+                                            if (url.startsWith("vibedict://selectEntry/")) {
+                                                val parts = url.removePrefix("vibedict://selectEntry/").split("/")
+                                                if (parts.size == 2) {
+                                                    val entryId = parts[0]
+                                                    val index = parts[1].toIntOrNull() ?: 0
+                                                    selectedIndices[entryId] = index
+                                                }
+                                                return true
+                                            }
+                                            
+                                            // Handle sound playback
+                                            val isSound = url.startsWith("sound://") ||
+                                                    (url.startsWith("content://") && (url.endsWith(".mp3") || url.endsWith(".wav") || url.endsWith(".spx")))
+                                            
+                                            if (isSound) {
+                                                val resourceKey2 = when {
+                                                    url.startsWith("sound://") -> url.substringAfter("sound://")
+                                                    url.startsWith("content://mdict.cn/") -> url.substringAfter("content://mdict.cn/")
+                                                    url.startsWith("content://") -> url.substringAfter("content://")
+                                                    else -> url
+                                                }
+                                                
+                                                coroutineScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                                                    val audioData = DictionaryManager.getResourceByKey(java.net.URLDecoder.decode(resourceKey2, "UTF-8"))
+                                                    if (audioData != null) {
+                                                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                                                            playSound(ctx, audioData)
+                                                        }
+                                                    }
+                                                }
+                                                return true
+                                            }
+                                            
+                                            // Handle entry links
+                                            val entryWord = if (url.startsWith("entry://")) {
+                                                url.substringAfter("entry://")
+                                            } else if (url.startsWith("content://") && "/entry/" in url) {
+                                                url.substringAfterLast("/")
+                                            } else null
+                                            
+                                            if (entryWord != null) {
+                                                try {
+                                                    val decoded = java.net.URLDecoder.decode(entryWord, "UTF-8")
+                                                    navController.navigate(Screen.createRouteForWord(decoded))
+                                                } catch (e: Exception) {
+                                                    e.printStackTrace()
+                                                }
+                                                return true
+                                            }
+                                            
+                                            return super.shouldOverrideUrlLoading(view, request)
+                                        }
+                                    }
+                                }
+                            },
+                            update = { webView ->
+                                val html = WebViewModeRenderer.generateFullPageHtml(
+                                    entries = state.results,
+                                    expandedStates = expandedStates.toMap(),
+                                    selectedIndices = selectedIndices.toMap(),
+                                    fontPathsMap = fontPathsMap.toMap(),
+                                    isDarkTheme = isDarkTheme,
+                                    displayScale = displayScale,
+                                    context = context,
+                                    themeColors = themeColors
+                                )
+                                
+                                webView.loadDataWithBaseURL(
+                                    "https://waltermelon.app/",
+                                    html,
+                                    "text/html",
+                                    "UTF-8",
+                                    null
+                                )
+                            },
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    } else {
+                        // --- NATIVE MODE: Existing Compose + individual WebViews ---
+                        val scrollState = rememberScrollState()
+                        // --- STICKY HEADER OVERLAY ---
+                        val headerHeights = remember { mutableStateMapOf<Int, Int>() }
+                        val sectionPositions = remember { mutableStateMapOf<Int, Float>() }
+                        val sectionHeights = remember { mutableStateMapOf<Int, Int>() }
+
+                        val stickyIndex = state.results.indices.lastOrNull { index ->
+                            val y = sectionPositions[index] ?: Float.MAX_VALUE
+                            y <= scrollState.value
+                        } ?: -1
+
+                        if (stickyIndex != -1) {
+                            val stickyEntry = state.results[stickyIndex]
+                            val isExpanded = expandedStates.getOrDefault(stickyEntry.dictionaryName, stickyEntry.isExpandedByDefault)
+                            val selectedIndex = selectedIndices.getOrDefault(stickyEntry.id, 0)
+                            
+                            val sectionTop = sectionPositions[stickyIndex] ?: 0f
+                            val sectionHeight = sectionHeights[stickyIndex] ?: 0
+                            val sectionBottom = sectionTop + sectionHeight
+                            val currentHeaderHeight = headerHeights[stickyIndex] ?: 0
+                            
+                            // Calculate offset: push up if the bottom of the section hits the header
+                            val offset = if (sectionHeight > 0 && currentHeaderHeight > 0) {
+                                val distToBottom = sectionBottom - scrollState.value
+                                if (distToBottom < currentHeaderHeight) distToBottom - currentHeaderHeight else 0f
+                            } else {
+                                0f
+                            }
+                            
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .zIndex(1f)
+                                    .graphicsLayer { translationY = offset }
+                            ) {
+                                DictionaryHeaderItem(
+                                    title = stickyEntry.dictionaryName,
+                                    isExpanded = isExpanded,
+                                    onToggle = { expandedStates[stickyEntry.dictionaryName] = !isExpanded },
+                                    isLoading = stickyEntry.isLoading,
+                                    entryCount = stickyEntry.entries.size,
+                                    selectedIndex = selectedIndex,
+                                    onSelectEntry = { newIndex -> selectedIndices[stickyEntry.id] = newIndex }
+                                )
+                            }
+                        }
+                        // -----------------------------
+
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .verticalScroll(scrollState)
+                        ) {
+                            state.results.forEachIndexed { index, entry ->
+                                key(entry.id) {
+                                    val isExpanded = expandedStates.getOrDefault(entry.dictionaryName, entry.isExpandedByDefault)
+                                    val selectedIndex = selectedIndices.getOrDefault(entry.id, 0)
+
+                                    // Wrap the entire section (Header + Body) to track its bounds
+                                    Column(
                                         modifier = Modifier.onGloballyPositioned { coordinates ->
-                                            headerHeights[index] = coordinates.size.height
+                                            sectionPositions[index] = coordinates.positionInParent().y
+                                            sectionHeights[index] = coordinates.size.height
                                         }
                                     ) {
-                                        DictionaryHeaderItem(
-                                            title = entry.dictionaryName,
-                                            isExpanded = isExpanded,
-                                            onToggle = { expandedStates[entry.dictionaryName] = !isExpanded },
+                                        Box(
+                                            modifier = Modifier.onGloballyPositioned { coordinates ->
+                                                headerHeights[index] = coordinates.size.height
+                                            }
+                                        ) {
+                                            DictionaryHeaderItem(
+                                                title = entry.dictionaryName,
+                                                isExpanded = isExpanded,
+                                                onToggle = { expandedStates[entry.dictionaryName] = !isExpanded },
+                                                isLoading = entry.isLoading,
+                                                entryCount = entry.entries.size,
+                                                selectedIndex = selectedIndex,
+                                                onSelectEntry = { newIndex -> selectedIndices[entry.id] = newIndex }
+                                            )
+                                        }
+
+                                        // --- NEW: Observe live font paths to handle updates immediately ---
+                                        val dynamicFontPaths by viewModel.getFontPaths(entry.id).collectAsState(initial = entry.customFontPaths)
+
+                                        // Select content based on index, safe guard against OOB
+                                        val contentToShow = if (entry.entries.isNotEmpty()) {
+                                            entry.entries.getOrElse(selectedIndex) { entry.entries[0] }
+                                        } else {
+                                            ""
+                                        }
+
+                                        DictionaryBodyItem(
+                                            navController = navController,
+                                            dictId = entry.id,
+                                            content = contentToShow,
+                                            customCss = entry.customCss,
+                                            customJs = entry.customJs,
+                                            isVisible = isExpanded,
+                                            forceOriginalStyle = entry.forceOriginalStyle,
+                                            customFontPaths = dynamicFontPaths, // --- CHANGED to live flow ---
+                                            findNavEvent = findNavEvent,
                                             isLoading = entry.isLoading,
-                                            entryCount = entry.entries.size,
-                                            selectedIndex = selectedIndex,
-                                            onSelectEntry = { newIndex -> selectedIndices[entry.id] = newIndex }
+                                            displayScale = displayScale // --- NEW ---
                                         )
                                     }
-
-                                    // --- NEW: Observe live font paths to handle updates immediately ---
-                                    val dynamicFontPaths by viewModel.getFontPaths(entry.id).collectAsState(initial = entry.customFontPaths)
-
-                                    // Select content based on index, safe guard against OOB
-                                    val contentToShow = if (entry.entries.isNotEmpty()) {
-                                        entry.entries.getOrElse(selectedIndex) { entry.entries[0] }
-                                    } else {
-                                        ""
-                                    }
-
-                                    DictionaryBodyItem(
-                                        navController = navController,
-                                        dictId = entry.id,
-                                        content = contentToShow,
-                                        customCss = entry.customCss,
-                                        customJs = entry.customJs,
-                                        isVisible = isExpanded,
-                                        forceOriginalStyle = entry.forceOriginalStyle,
-                                        customFontPaths = dynamicFontPaths, // --- CHANGED to live flow ---
-                                        findNavEvent = findNavEvent,
-                                        isLoading = entry.isLoading,
-                                        displayScale = displayScale // --- NEW ---
-                                    )
                                 }
                             }
                         }

@@ -91,6 +91,9 @@ class UserPreferencesRepository(private val context: Context) {
         val LLM_PROVIDERS = stringPreferencesKey("llm_providers_json")
         val AI_PROMPTS = stringPreferencesKey("ai_prompts_json")
         val USE_WILDCARD = booleanPreferencesKey("use_wildcard")
+        
+        // --- NEW: WebView Mode ---
+        val USE_WEBVIEW_MODE = booleanPreferencesKey("use_webview_mode")
 
     }
 
@@ -109,6 +112,7 @@ class UserPreferencesRepository(private val context: Context) {
 
     val bookmarks: Flow<Set<String>> = dataStore.data.map { it[Keys.BOOKMARKS] ?: emptySet() }
     val useWildcard: Flow<Boolean> = dataStore.data.map { it[Keys.USE_WILDCARD] ?: false }
+    val useWebViewMode: Flow<Boolean> = dataStore.data.map { it[Keys.USE_WEBVIEW_MODE] ?: false }
 
     // --- UPDATED: History Flow ---
     val history: Flow<List<String>> = dataStore.data.map { preferences ->
@@ -153,6 +157,7 @@ class UserPreferencesRepository(private val context: Context) {
 
     suspend fun setRegexEnabled(isEnabled: Boolean) = dataStore.edit { it[Keys.IS_REGEX_ENABLED] = isEnabled }
     suspend fun setUseWildcard(isEnabled: Boolean) = dataStore.edit { it[Keys.USE_WILDCARD] = isEnabled }
+    suspend fun setUseWebViewMode(isEnabled: Boolean) = dataStore.edit { it[Keys.USE_WEBVIEW_MODE] = isEnabled }
 
     suspend fun addDictionaryDirectory(uriString: String) = dataStore.edit { preferences ->
         val currentSet = preferences[Keys.DICTIONARY_DIRS] ?: emptySet()
