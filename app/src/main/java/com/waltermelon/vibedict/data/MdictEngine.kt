@@ -106,4 +106,16 @@ class MdictEngine : Closeable {
         val results = getFullTextSuggestionsNative(dictionaryHandle, query, listener)
         return results?.toList() ?: emptyList()
     }
+
+    /**
+     * Gets all dictionary entry keys (headwords).
+     * @return A list of all keys in the dictionary.
+     */
+    @Synchronized
+    fun getAllKeys(): List<String> {
+        if (dictionaryHandle == 0L) return emptyList()
+        return getAllKeysNative(dictionaryHandle)?.toList() ?: emptyList()
+    }
+
+    private external fun getAllKeysNative(dictHandle: Long): Array<String>?
 }

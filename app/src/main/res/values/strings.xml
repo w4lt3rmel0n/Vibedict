@@ -184,4 +184,6 @@
     <string name="mount_css_warning">This dictionary might already have internal styling. Mounting a custom file might cause conflicts. Do you want to continue?</string>
     <string name="mount_js_warning">This dictionary might already have internal scripts. Mounting a custom file might cause conflicts. Do you want to continue?</string>
     <string name="continue_text">Continue</string>
+    <string name="view_entries">View Entries</string>
+    <string name="view_files">View Files</string>
 </resources>

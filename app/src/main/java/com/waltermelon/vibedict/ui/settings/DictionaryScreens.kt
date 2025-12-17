@@ -2,6 +2,14 @@ package com.waltermelon.vibedict.ui.settings
 
 import android.content.Context
 import android.net.Uri
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.launch
+import java.io.File
+import java.io.FileOutputStream
+import android.content.Intent
+import android.webkit.MimeTypeMap
+import androidx.core.content.FileProvider
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.BackHandler
@@ -17,6 +25,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.ArrowForwardIos
+import androidx.compose.material.icons.automirrored.outlined.InsertDriveFile
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material.icons.filled.Add
@@ -532,29 +541,146 @@ fun DictionaryDetailScreen(navController: NavController, dictId: String) {
                     val mddCount = dictionary?.mddEngines?.size ?: 0
                     val mddSubtitle = if (mddCount == 0) stringResource(R.string.not_found) else stringResource(R.string.files_loaded, mddCount)
 
-                    DictSettingsRow(
-                        icon = Icons.Outlined.Description,
-                        title = stringResource(R.string.mdx_file),
-                        subtitle = if (dictionary?.mdxEngine != null) stringResource(R.string.loaded) else stringResource(R.string.not_found),
-                        trailingContent = {
-                            if (dictionary?.mdxEngine != null)
-                                Icon(Icons.Outlined.CheckCircle, null, tint = MaterialTheme.colorScheme.primary)
-                            else
-                                Icon(Icons.Outlined.Error, null, tint = MaterialTheme.colorScheme.error)
+                    // MDX Row
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.Top
+                    ) {
+                        Icon(
+                            Icons.Outlined.Description,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.secondary,
+                            modifier = Modifier.padding(top = 2.dp)
+                        )
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        stringResource(R.string.mdx_file),
+                                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
+                                    )
+                                    Text(
+                                        if (dictionary?.mdxEngine != null) stringResource(R.string.loaded) else stringResource(R.string.not_found),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                if (dictionary?.mdxEngine != null) {
+                                    Icon(Icons.Outlined.CheckCircle, null, tint = MaterialTheme.colorScheme.primary)
+                                } else {
+                                    Icon(Icons.Outlined.Error, null, tint = MaterialTheme.colorScheme.error)
+                                }
+                            }
+                            if (dictionary?.mdxEngine != null) {
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Text(
+                                    stringResource(R.string.view_entries),
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.clickable {
+                                        navController.safeNavigate(Screen.createEntryListRoute(dictId))
+                                    }
+                                )
+                            }
                         }
-                    )
+                    }
 
-                    DictSettingsRow(
-                        icon = Icons.Outlined.Image,
-                        title = stringResource(R.string.mdd_file),
-                        subtitle = mddSubtitle,
-                        trailingContent = {
-                            if (mddCount > 0)
-                                Icon(Icons.Outlined.CheckCircle, null, tint = MaterialTheme.colorScheme.primary)
-                            else
-                                Icon(Icons.Outlined.Error, null, tint = MaterialTheme.colorScheme.error)
+                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+
+                    // MDD Row
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.Top
+                    ) {
+                        Icon(
+                            Icons.Outlined.Image,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.secondary,
+                            modifier = Modifier.padding(top = 2.dp)
+                        )
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        stringResource(R.string.mdd_file),
+                                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
+                                    )
+                                    Text(
+                                        mddSubtitle,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                if (mddCount > 0) {
+                                    Icon(Icons.Outlined.CheckCircle, null, tint = MaterialTheme.colorScheme.primary)
+                                } else {
+                                    Icon(Icons.Outlined.Error, null, tint = MaterialTheme.colorScheme.error)
+                                }
+                            }
+
+                            if (mddCount > 0) {
+                                Spacer(modifier = Modifier.height(12.dp))
+                                
+                                var showMddMenu by remember { mutableStateOf(false) }
+                                val extractLauncher = rememberLauncherForActivityResult(
+                                    contract = ActivityResultContracts.OpenDocumentTree()
+                                ) { uri: Uri? ->
+                                    if (uri != null) {
+                                        viewModel.extractDictionary(context, dictId, uri)
+                                    }
+                                }
+                                var showFileViewer by remember { mutableStateOf(false) }
+
+                                Box {
+                                    Text(
+                                        stringResource(R.string.view_files),
+                                        style = MaterialTheme.typography.labelLarge,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.clickable { showMddMenu = true }
+                                    )
+                                    DropdownMenu(
+                                        expanded = showMddMenu,
+                                        onDismissRequest = { showMddMenu = false }
+                                    ) {
+                                        DropdownMenuItem(
+                                            text = { Text("Extract and save") },
+                                            onClick = {
+                                                showMddMenu = false
+                                                extractLauncher.launch(null)
+                                            },
+                                            leadingIcon = { Icon(Icons.Outlined.Save, null) }
+                                        )
+                                        DropdownMenuItem(
+                                            text = { Text("View files") },
+                                            onClick = {
+                                                showMddMenu = false
+                                                showFileViewer = true
+                                            },
+                                            leadingIcon = { Icon(Icons.Outlined.FolderOpen, null) }
+                                        )
+                                    }
+                                }
+
+                                if (showFileViewer) {
+                                    MddFileViewerDialog(dictId = dictId, onDismiss = { showFileViewer = false })
+                                }
+                            }
                         }
-                    )
+                    }
                 }
             }
 
@@ -715,6 +841,33 @@ fun DictionaryDetailScreen(navController: NavController, dictId: String) {
         )
     }
 
+    val isExtracting by viewModel.isExtracting.collectAsState()
+    val extractionProgress by viewModel.extractionProgress.collectAsState()
+    val extractionStatus by viewModel.extractionStatus.collectAsState()
+
+    if (isExtracting) {
+        AlertDialog(
+            onDismissRequest = { /* Prevent dismiss */ },
+            title = { Text("Extracting Files...") },
+            text = {
+                Column {
+                    LinearProgressIndicator(
+                        progress = { extractionProgress },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = extractionStatus,
+                        style = MaterialTheme.typography.bodySmall,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            },
+            confirmButton = {}
+        )
+    }
+
     if (showUnsavedChangesDialog) {
         AlertDialog(
             onDismissRequest = { showUnsavedChangesDialog = false },
@@ -724,14 +877,15 @@ fun DictionaryDetailScreen(navController: NavController, dictId: String) {
                 TextButton(onClick = {
                     onSave()
                     showUnsavedChangesDialog = false
+                    navController.popBackStack()
                 }) { Text(stringResource(R.string.save)) }
             },
             dismissButton = {
                 Row {
                     TextButton(onClick = { showUnsavedChangesDialog = false }) { Text(stringResource(R.string.cancel)) }
                     TextButton(onClick = {
-                        navController.popBackStack()
                         showUnsavedChangesDialog = false
+                        navController.popBackStack()
                     }) { Text(stringResource(R.string.dont_save)) }
                 }
             }
@@ -840,7 +994,8 @@ fun DictSettingsRow(
     title: String,
     subtitle: String? = null,
     onClick: (() -> Unit)? = null,
-    trailingContent: @Composable (() -> Unit)? = null
+    trailingContent: @Composable (() -> Unit)? = null,
+    bottomContent: @Composable (() -> Unit)? = null
 ) {
     Row(
         modifier = Modifier
@@ -866,6 +1021,10 @@ fun DictSettingsRow(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
+            if (bottomContent != null) {
+                Spacer(modifier = Modifier.height(4.dp))
+                bottomContent()
+            }
         }
         if (trailingContent != null) {
             Box(contentAlignment = Alignment.CenterEnd) {
@@ -873,4 +1032,176 @@ fun DictSettingsRow(
             }
         }
     }
+}
+
+@Composable
+fun MddFileViewerDialog(
+    dictId: String,
+    onDismiss: () -> Unit
+) {
+    val context = LocalContext.current
+    var fullFileList by remember { mutableStateOf<List<String>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(true) }
+    var currentPath by remember { mutableStateOf("") } // Normalized path (using forward slashes, no leading/trailing)
+    var isOpeningFile by remember { mutableStateOf(false) }
+
+    LaunchedEffect(dictId) {
+        withContext(Dispatchers.IO) {
+             val dict = DictionaryManager.getDictionaryById(dictId)
+             val allKeys = mutableSetOf<String>()
+             dict?.mddEngines?.forEach { allKeys.addAll(it.getAllKeys()) }
+             // Normalize: \ -> /, remove leading /, sort
+             fullFileList = allKeys.map { it.replace("\\", "/").trimStart('/') }.sorted()
+             isLoading = false
+        }
+    }
+
+    // Filter list based on currentPath
+    val displayItems = remember(fullFileList, currentPath) {
+        val items = mutableSetOf<Pair<String, Boolean>>() // Name, isDir
+        
+        if (currentPath.isNotEmpty()) {
+            items.add(Pair("..", true))
+        }
+
+        val prefix = if (currentPath.isEmpty()) "" else "$currentPath/"
+        // Optimize: use binary search or just filter if list is small enough. 
+        // For simple impl, filter is fine unless 100k files.
+        fullFileList.forEach { path ->
+            if (path.startsWith(prefix)) {
+                val relative = path.removePrefix(prefix)
+                if (relative.isNotEmpty()) {
+                    val parts = relative.split("/")
+                    val name = parts[0]
+                    if (name.isNotEmpty()) {
+                        val isDir = parts.size > 1
+                        items.add(Pair(name, isDir))
+                    }
+                }
+            }
+        }
+        items.sortedWith(compareBy({ !it.second }, { it.first }))
+    }
+
+    // File Opening Logic
+    val scope = rememberCoroutineScope()
+    fun openFile(fileName: String) {
+        if (isOpeningFile) return
+        isOpeningFile = true
+        scope.launch(Dispatchers.IO) {
+            try {
+                // Reconstruct full path for lookup
+                val normalizedPath = if (currentPath.isEmpty()) fileName else "$currentPath/$fileName"
+                // DictionaryManager.getResource handles / vs \ and leading \ automatically.
+                
+                val content = DictionaryManager.getResource(dictId, normalizedPath)
+                if (content != null) {
+                    // Create temp file
+                    val cacheDir = File(context.cacheDir, "temp_viewer")
+                    if (!cacheDir.exists()) cacheDir.mkdirs()
+                    
+                    // Sanitize filename for FS but keep extension
+                    val ext = fileName.substringAfterLast('.', "")
+                    val nameOnly = fileName.substringBeforeLast('.')
+                    val safeName = nameOnly.replace("[^a-zA-Z0-9.-]", "_")
+                    val file = File(cacheDir, "$safeName.$ext")
+                    
+                    FileOutputStream(file).use { it.write(content) }
+                    
+                    // Create Intent
+                    val authority = "${context.packageName}.fileprovider"
+                    val contentUri = FileProvider.getUriForFile(context, authority, file)
+                    val mimeType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext) ?: "*/*"
+                    
+                    val intent = Intent(Intent.ACTION_VIEW).apply {
+                        setDataAndType(contentUri, mimeType)
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    }
+                    
+                    withContext(Dispatchers.Main) {
+                        try {
+                            context.startActivity(intent)
+                        } catch (e: Exception) {
+                            android.widget.Toast.makeText(context, "No app found to open this file", android.widget.Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                } else {
+                     withContext(Dispatchers.Main) {
+                        android.widget.Toast.makeText(context, "Failed to load resource", android.widget.Toast.LENGTH_SHORT).show()
+                     }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                 withContext(Dispatchers.Main) {
+                    android.widget.Toast.makeText(context, "Error: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
+                 }
+            } finally {
+                isOpeningFile = false
+            }
+        }
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Column {
+                Text(if (currentPath.isEmpty()) "/" else "/$currentPath")
+                if (isLoading) {
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(top = 8.dp))
+                } else if (isOpeningFile) {
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), color = MaterialTheme.colorScheme.secondary)
+                }
+            }
+        },
+        text = {
+            if (!isLoading) {
+                LazyColumn(modifier = Modifier.height(400.dp)) {
+                    if (displayItems.isEmpty()) {
+                        item { Text("Folder is empty", style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(8.dp)) }
+                    }
+                    items(displayItems.toList()) { (name, isDir) ->
+                         Row(
+                             modifier = Modifier
+                                 .fillMaxWidth()
+                                 .clickable {
+                                     if (name == "..") {
+                                         // Go Up
+                                         val lastSlash = currentPath.lastIndexOf('/')
+                                         currentPath = if (lastSlash == -1) "" else currentPath.substring(0, lastSlash)
+                                     } else if (isDir) {
+                                         // Go Down
+                                         currentPath = if (currentPath.isEmpty()) name else "$currentPath/$name"
+                                     } else {
+                                         // Open File
+                                         openFile(name)
+                                     }
+                                 }
+                                 .padding(vertical = 12.dp, horizontal = 4.dp),
+                             verticalAlignment = Alignment.CenterVertically
+                         ) {
+                             Icon(
+                                 if (name == "..") Icons.AutoMirrored.Outlined.ArrowBack else if (isDir) Icons.Outlined.Folder else Icons.AutoMirrored.Outlined.InsertDriveFile, 
+                                 null, 
+                                 tint = if (isDir || name == "..") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                 modifier = Modifier.size(20.dp)
+                             )
+                             Spacer(Modifier.width(16.dp))
+                             Text(
+                                 text = name,
+                                 style = MaterialTheme.typography.bodyMedium,
+                                 maxLines = 1,
+                                 overflow = TextOverflow.Ellipsis
+                             )
+                         }
+                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.close))
+            }
+        }
+    )
 }

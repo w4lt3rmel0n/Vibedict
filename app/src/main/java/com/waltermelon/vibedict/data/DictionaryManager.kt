@@ -622,4 +622,110 @@ object DictionaryManager {
     fun getDictionaryById(id: String): LoadedDictionary? {
         return loadedDictionaries.find { it.id == id }
     }
+
+    suspend fun extractDictionary(
+        context: Context,
+        dictId: String,
+        targetDir: Uri,
+        onProgress: (Float, String) -> Unit
+    ) = withContext(Dispatchers.IO) {
+        val dict = getDictionaryById(dictId) ?: return@withContext
+        val engines = dict.mddEngines
+        if (engines.isEmpty()) return@withContext
+
+        val rootDir = DocumentFile.fromTreeUri(context, targetDir) ?: return@withContext
+
+        // Create base folder
+        // Since createDirectory might fail if it exists (DocumentFile behavior varies), check findFile first
+        val baseFolder = rootDir.findFile(dict.name) ?: rootDir.createDirectory(dict.name) ?: run {
+             // Fallback: if name is invalid or something, try sanitized
+             val sanitized = dict.name.replace("[^a-zA-Z0-9._-]".toRegex(), "_")
+             rootDir.findFile(sanitized) ?: rootDir.createDirectory(sanitized)
+        } ?: return@withContext
+
+        val allKeys = mutableSetOf<String>()
+        engines.forEach { allKeys.addAll(it.getAllKeys()) }
+
+        val total = allKeys.size
+        if (total == 0) {
+            onProgress(1.0f, "No files found")
+            return@withContext
+        }
+
+        var current = 0
+        val dirCache = mutableMapOf<String, DocumentFile>()
+        dirCache[""] = baseFolder
+
+        for (key in allKeys) {
+            // key e.g. \foo\bar.png
+            // Normalize path
+            val path = key.replace("\\", "/").trimStart('/')
+            val parts = path.split("/")
+            if (parts.isEmpty()) continue
+
+            // Determine parent directory
+            // We need to resolve the directory structure
+            var currentPath = ""
+            var currentDir = baseFolder
+
+            // Traverse directories
+            for (i in 0 until parts.size - 1) {
+                val dirName = parts[i]
+                val nextPath = if (currentPath.isEmpty()) dirName else "$currentPath/$dirName"
+                
+                val cached = dirCache[nextPath]
+                if (cached != null) {
+                    currentDir = cached
+                } else {
+                    val nextDir = currentDir.findFile(dirName) ?: currentDir.createDirectory(dirName)
+                    if (nextDir != null) {
+                        dirCache[nextPath] = nextDir
+                        currentDir = nextDir
+                    } else {
+                        // Failed to create dir, skip file
+                        break
+                    }
+                }
+                currentPath = nextPath
+            }
+
+            // Create and Write file
+            val fileName = parts.last()
+            // Check if file exists to avoid overwrite? Use create file which usually creates distinct name or fails?
+            // SAF createDirectory throws? No, returns null.
+            // createFile(mime, name).
+            
+            // To overwrite we need to find and delete or open output stream.
+            // Let's assume we want to overwrite if exists or just create new.
+            // findFile is costly.
+            
+            // Optimization: Just try to create. 
+            // NOTE: createFile in SAF might create "name (1)" if exists.
+            // If we want exact extraction we should probably check existence if it's critical.
+            // Given performance, let's just create. If re-extracting, duplicates might occur.
+            // For now, let's check existence because "Extract" implies overwriting usually or at least not spamming (1).
+            
+            val existing = currentDir.findFile(fileName)
+            val file = existing ?: currentDir.createFile("*/*", fileName)
+            
+            if (file != null) {
+                val content = getResource(dictId, key)
+                if (content != null) {
+                    try {
+                        context.contentResolver.openOutputStream(file.uri, "w")?.use { // "w" = write and truncate
+                            it.write(content)
+                        }
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                }
+            }
+
+            current++
+            if (current % 10 == 0) {
+                onProgress(current.toFloat() / total, path)
+            }
+        }
+        onProgress(1.0f, "Done")
+    }
 }

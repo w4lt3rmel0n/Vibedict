@@ -110,6 +110,16 @@ class SettingsViewModel(private val repository: UserPreferencesRepository) : Vie
     private val _isLoading = DictionaryManager.isLoading
     val isLoading: StateFlow<Boolean> = _isLoading
 
+    // --- Extraction State ---
+    private val _extractionProgress = MutableStateFlow(0f)
+    val extractionProgress = _extractionProgress.asStateFlow()
+
+    private val _extractionStatus = MutableStateFlow("")
+    val extractionStatus = _extractionStatus.asStateFlow()
+
+    private val _isExtracting = MutableStateFlow(false)
+    val isExtracting = _isExtracting.asStateFlow()
+
     // --- State for Collection Editor Screen ---
     private val _editingCollection = MutableStateFlow<DictCollection?>(null)
     val editingCollection = _editingCollection.asStateFlow()
@@ -588,6 +598,30 @@ class SettingsViewModel(private val repository: UserPreferencesRepository) : Vie
                 android.widget.Toast.makeText(context, "Import Failed: ${e.message}", android.widget.Toast.LENGTH_LONG).show()
             }
         }
+    }
+
+    fun extractDictionary(context: Context, dictId: String, uri: Uri) = viewModelScope.launch {
+        _isExtracting.value = true
+        _extractionProgress.value = 0f
+        _extractionStatus.value = "Starting..."
+
+        try {
+            DictionaryManager.extractDictionary(context, dictId, uri) { progress, status ->
+                _extractionProgress.value = progress
+                _extractionStatus.value = status
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            _extractionStatus.value = "Error: ${e.message}"
+        } finally {
+            _isExtracting.value = false
+        }
+    }
+
+    fun resetExtractionState() {
+        _isExtracting.value = false
+        _extractionProgress.value = 0f
+        _extractionStatus.value = ""
     }
 
     class SettingsViewModelFactory(private val repository: UserPreferencesRepository) :
