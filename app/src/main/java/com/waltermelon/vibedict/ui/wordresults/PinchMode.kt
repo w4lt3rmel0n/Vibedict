@@ -211,6 +211,34 @@ object WebViewModeRenderer {
     $entriesHtml
     
     <script>
+        // Store iframe selection for Define function
+        window.iframeSelectedText = '';
+        
+        // Listen for selection messages from iframes
+        window.addEventListener('message', function(event) {
+            if (event.data && event.data.type === 'iframeSelection') {
+                window.iframeSelectedText = event.data.text || '';
+            }
+        });
+        
+        // Override getSelection to include iframe text
+        (function() {
+            var originalGetSelection = window.getSelection.bind(window);
+            window.getSelection = function() {
+                var sel = originalGetSelection();
+                // Extend the selection object with a custom toString that checks iframe selection
+                var originalToString = sel.toString.bind(sel);
+                sel.toString = function() {
+                    var text = originalToString();
+                    if (!text && window.iframeSelectedText) {
+                        return window.iframeSelectedText;
+                    }
+                    return text;
+                };
+                return sel;
+            };
+        })();
+        
         // Toggle expand/collapse
         function toggleEntry(entryId) {
             const body = document.getElementById('body-' + entryId);
@@ -426,6 +454,13 @@ object WebViewModeRenderer {
         new ResizeObserver(function() {
             parent.postMessage({type: 'resize', height: document.body.scrollHeight}, '*');
         }).observe(document.body);
+        
+        // Post selection changes to parent for Define function
+        document.addEventListener('selectionchange', function() {
+            var sel = window.getSelection();
+            var text = sel ? sel.toString() : '';
+            parent.postMessage({type: 'iframeSelection', text: text}, '*');
+        });
     </script>
 </body>
 </html>
