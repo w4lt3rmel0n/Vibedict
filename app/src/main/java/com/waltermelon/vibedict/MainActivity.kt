@@ -385,6 +385,28 @@ class MainActivity : androidx.appcompat.app.AppCompatActivity() {
                                 DictionaryDetailScreen(navController = navController, dictId = dictId)
                             }
 
+                            // --- NEW: Entry List Screen ---
+                            composable(
+                                route = Screen.ENTRY_LIST,
+                                arguments = listOf(navArgument("dictId") { type = NavType.StringType })
+                            ) { backStackEntry ->
+                                val dictId = backStackEntry.arguments?.getString("dictId") ?: ""
+                                com.waltermelon.vibedict.ui.settings.EntryListScreen(navController, dictId)
+                            }
+
+                            // --- NEW: Entry Detail Screen ---
+                            composable(
+                                route = Screen.ENTRY_DETAIL,
+                                arguments = listOf(
+                                    navArgument("dictId") { type = NavType.StringType },
+                                    navArgument("word") { type = NavType.StringType }
+                                )
+                            ) { backStackEntry ->
+                                val dictId = backStackEntry.arguments?.getString("dictId") ?: ""
+                                val word = backStackEntry.arguments?.getString("word") ?: ""
+                                com.waltermelon.vibedict.ui.settings.EntryDetailScreen(navController, dictId, word)
+                            }
+
                             // --- Bookmark (Unchanged animation) ---
                             composable(
                                 route = Screen.BOOKMARK,
