@@ -307,4 +307,35 @@ Java_com_waltermelon_vibedict_data_MdictEngine_getFullTextSuggestionsNative(
     }
 }
 
+// ----------------------------------------------------------------------------
+// 9. Get All Keys (for Entry Viewer)
+// ----------------------------------------------------------------------------
+JNIEXPORT jobjectArray JNICALL
+Java_com_waltermelon_vibedict_data_MdictEngine_getAllKeysNative(
+        JNIEnv* env,
+        jobject /* this */,
+        jlong dictHandle) {
+
+    if (dictHandle == 0) return nullptr;
+    auto* dict = reinterpret_cast<mdict::Mdict*>(dictHandle);
+
+    std::vector<mdict::key_list_item*> keyList = dict->keyList();
+
+    __android_log_print(ANDROID_LOG_DEBUG, "MdictJNI", "getAllKeysNative: Found %zu keys", keyList.size());
+
+    jclass stringClass = env->FindClass("java/lang/String");
+    if (stringClass == nullptr) return nullptr;
+
+    jobjectArray stringArray = env->NewObjectArray(keyList.size(), stringClass, nullptr);
+    if (stringArray == nullptr) return nullptr;
+
+    for (size_t i = 0; i < keyList.size(); ++i) {
+        jstring javaString = env->NewStringUTF(keyList[i]->key_word.c_str());
+        env->SetObjectArrayElement(stringArray, i, javaString);
+        env->DeleteLocalRef(javaString);
+    }
+
+    return stringArray;
+}
+
 } // extern "C"

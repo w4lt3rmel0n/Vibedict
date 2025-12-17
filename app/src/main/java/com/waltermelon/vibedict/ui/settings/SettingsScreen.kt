@@ -22,6 +22,8 @@ import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -40,6 +42,7 @@ import com.waltermelon.vibedict.ui.theme.safeNavigate
 import androidx.compose.ui.res.stringResource
 import com.waltermelon.vibedict.R
 import com.waltermelon.vibedict.util.LogUtil
+import com.waltermelon.vibedict.data.UserPreferencesRepository
 import kotlinx.coroutines.launch
 
 @Composable
@@ -80,6 +83,7 @@ fun SettingsScreen(
 
     val instantSearch by viewModel.instantSearch.collectAsState()
     val useWildcard by viewModel.useWildcard.collectAsState()
+    val useWebViewMode by viewModel.useWebViewMode.collectAsState()
 
     var showLanguageDialog by remember { mutableStateOf(false) }
     var showDarkModeDialog by remember { mutableStateOf(false) }
@@ -115,7 +119,9 @@ fun SettingsScreen(
                     onSliderPositionChange = { viewModel.setDisplayScale(it) },
 
                     keepScreenOn = keepScreenOn,
-                    onKeepScreenOnChange = { viewModel.setKeepScreenOn(it) }
+                    onKeepScreenOnChange = { viewModel.setKeepScreenOn(it) },
+                    useWebViewMode = useWebViewMode,
+                    onUseWebViewModeChange = { viewModel.setUseWebViewMode(it) }
                 )
             }
 
@@ -133,6 +139,18 @@ fun SettingsScreen(
                     onInstantSearchChange = { viewModel.setInstantSearch(it) },
                     useWildcard = useWildcard,
                     onUseWildcardChange = { viewModel.setUseWildcard(it) }
+                )
+            }
+
+            item {
+                DataSettingsCard(
+                    onBackupClick = {
+                        // Handled in composable
+                    },
+                    onRestoreClick = {
+                        // Handled in composable
+                    },
+                    viewModel = viewModel
                 )
             }
 
@@ -200,7 +218,9 @@ private fun InterfaceSettingsCard(
     onSliderPositionChange: (Float) -> Unit,
 
     keepScreenOn: Boolean,
-    onKeepScreenOnChange: (Boolean) -> Unit
+    onKeepScreenOnChange: (Boolean) -> Unit,
+    useWebViewMode: Boolean,
+    onUseWebViewModeChange: (Boolean) -> Unit
 ) {
     SettingsCard(title = stringResource(R.string.pref_interface)) {
         SettingsRow(
@@ -248,6 +268,15 @@ private fun InterfaceSettingsCard(
             subtitle = stringResource(R.string.pref_keep_screen_on_subtitle),
             trailingContent = {
                 Switch(checked = keepScreenOn, onCheckedChange = onKeepScreenOnChange)
+            }
+        )
+
+        SettingsRow(
+            icon = Icons.Outlined.Pinch,
+            title = stringResource(R.string.pref_pinch_mode),
+            subtitle = stringResource(R.string.pref_pinch_mode_subtitle),
+            trailingContent = {
+                Switch(checked = useWebViewMode, onCheckedChange = onUseWebViewModeChange)
             }
         )
 
@@ -316,6 +345,153 @@ private fun SearchSettingsCard(
                 Switch(checked = useWildcard, onCheckedChange = onUseWildcardChange)
             }
         )
+    }
+}
+
+@Composable
+private fun DataSettingsCard(
+    onBackupClick: () -> Unit,
+    onRestoreClick: () -> Unit,
+    viewModel: SettingsViewModel
+) {
+    val context = LocalContext.current
+    var showBackupDialog by remember { mutableStateOf(false) }
+    var showRestoreDialog by remember { mutableStateOf(false) }
+    var selectedCategories by remember { mutableStateOf(emptySet<UserPreferencesRepository.BackupCategory>()) }
+
+    // Export: Dialog -> Picker -> Action
+    val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { uri ->
+        uri?.let { viewModel.exportProfile(context, it, selectedCategories) }
+    }
+
+    if (showBackupDialog) {
+        BackupRestoreOptionsDialog(
+            title = stringResource(R.string.pref_backup_profile),
+            onDismiss = { showBackupDialog = false },
+            onConfirm = { categories ->
+                selectedCategories = categories
+                showBackupDialog = false
+                val timestamp = java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.getDefault()).format(java.util.Date())
+                exportLauncher.launch("vibedict_backup_$timestamp.bak")
+            }
+        )
+    }
+
+    // Import: Picker -> Dialog -> Action
+    var pendingImportUri by remember { mutableStateOf<Uri?>(null) }
+    
+    val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) {
+            pendingImportUri = uri
+            showRestoreDialog = true
+        }
+    }
+
+    if (showRestoreDialog) {
+        BackupRestoreOptionsDialog(
+            title = stringResource(R.string.pref_restore_profile),
+            confirmText = stringResource(R.string.load),
+            onDismiss = { 
+                showRestoreDialog = false 
+                pendingImportUri = null
+            },
+            onConfirm = { categories ->
+                selectedCategories = categories
+                showRestoreDialog = false
+                pendingImportUri?.let { uri ->
+                    viewModel.importProfile(context, uri, categories)
+                }
+                pendingImportUri = null
+            }
+        )
+    }
+
+    SettingsCard(title = stringResource(R.string.pref_data)) {
+        SettingsRow(
+            icon = Icons.Outlined.Archive,
+            title = stringResource(R.string.pref_backup_profile),
+            subtitle = stringResource(R.string.pref_backup_profile_subtitle),
+            onClick = { showBackupDialog = true }
+        )
+        SettingsRow(
+            icon = Icons.Outlined.Unarchive,
+            title = stringResource(R.string.pref_restore_profile),
+            subtitle = stringResource(R.string.pref_restore_profile_subtitle),
+            onClick = { importLauncher.launch("*/*") }
+        )
+    }
+}
+
+@Composable
+fun BackupRestoreOptionsDialog(
+    title: String,
+    confirmText: String = stringResource(R.string.save),
+    onDismiss: () -> Unit,
+    onConfirm: (Set<UserPreferencesRepository.BackupCategory>) -> Unit
+) {
+    // Default select all
+    val allCategories = UserPreferencesRepository.BackupCategory.values().toList()
+    val selected = remember { mutableStateMapOf<UserPreferencesRepository.BackupCategory, Boolean>().apply {
+        allCategories.forEach { put(it, true) }
+    }}
+
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            shape = RoundedCornerShape(16.dp),
+        ) {
+            Column(modifier = Modifier.padding(24.dp)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleLarge
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+
+                allCategories.forEach { category ->
+                    val label = when (category) {
+                        UserPreferencesRepository.BackupCategory.DICTIONARY_CONFIG -> "Dictionary Configurations"
+                        UserPreferencesRepository.BackupCategory.AI_PROMPTS -> "AI Prompts"
+                        UserPreferencesRepository.BackupCategory.WEB_SEARCH -> "Web Search Configurations"
+                        UserPreferencesRepository.BackupCategory.COLLECTIONS -> "Collections"
+                        UserPreferencesRepository.BackupCategory.BOOKMARKS -> "Bookmarks"
+                    }
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { selected[category] = !(selected[category] ?: false) }
+                            .padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Checkbox(
+                            checked = selected[category] ?: false,
+                            onCheckedChange = { selected[category] = it }
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(text = label)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(onClick = onDismiss) {
+                        Text(stringResource(R.string.cancel))
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(
+                        onClick = {
+                            val result = selected.filter { it.value }.keys.toSet()
+                            onConfirm(result)
+                        },
+                        enabled = selected.any { it.value }
+                    ) {
+                        Text(confirmText)
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -488,15 +664,20 @@ fun LogDialog(onDismiss: () -> Unit) {
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.End
                 ) {
+                    val exportLogLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/plain")) { uri ->
+                         uri?.let { 
+                             logs?.let { logContent ->
+                                 if (LogUtil.saveLogsToUri(context, it, logContent)) {
+                                     Toast.makeText(context, "Saved to ${it.path}", Toast.LENGTH_LONG).show()
+                                 } else {
+                                     Toast.makeText(context, "Failed to save logs", Toast.LENGTH_SHORT).show()
+                                 }
+                             }
+                         }
+                    }
+
                     TextButton(onClick = {
-                        logs?.let { logContent ->
-                            val file = LogUtil.exportLogs(context, logContent)
-                            if (file != null) {
-                                Toast.makeText(context, "Saved to ${file.absolutePath}", Toast.LENGTH_LONG).show()
-                            } else {
-                                Toast.makeText(context, "Failed to save logs", Toast.LENGTH_SHORT).show()
-                            }
-                        }
+                        exportLogLauncher.launch("vibedict_logs_${System.currentTimeMillis()}.log")
                     }) {
                         Text("Export .log")
                     }

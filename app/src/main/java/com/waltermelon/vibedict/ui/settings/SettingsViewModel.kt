@@ -64,6 +64,11 @@ class SettingsViewModel(private val repository: UserPreferencesRepository) : Vie
         SharingStarted.WhileSubscribed(5000),
         false
     )
+    val useWebViewMode = repository.useWebViewMode.stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(5000),
+        false
+    )
     val dictionaryDirs = repository.dictionaryDirectories.stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(5000),
@@ -104,6 +109,16 @@ class SettingsViewModel(private val repository: UserPreferencesRepository) : Vie
 
     private val _isLoading = DictionaryManager.isLoading
     val isLoading: StateFlow<Boolean> = _isLoading
+
+    // --- Extraction State ---
+    private val _extractionProgress = MutableStateFlow(0f)
+    val extractionProgress = _extractionProgress.asStateFlow()
+
+    private val _extractionStatus = MutableStateFlow("")
+    val extractionStatus = _extractionStatus.asStateFlow()
+
+    private val _isExtracting = MutableStateFlow(false)
+    val isExtracting = _isExtracting.asStateFlow()
 
     // --- State for Collection Editor Screen ---
     private val _editingCollection = MutableStateFlow<DictCollection?>(null)
@@ -180,6 +195,8 @@ class SettingsViewModel(private val repository: UserPreferencesRepository) : Vie
         viewModelScope.launch { repository.setInstantSearch(enabled) }
     fun setUseWildcard(enabled: Boolean) =
         viewModelScope.launch { repository.setUseWildcard(enabled) }
+    fun setUseWebViewMode(enabled: Boolean) =
+        viewModelScope.launch { repository.setUseWebViewMode(enabled) }
 
     fun addDictionaryFolder(context: Context, uri: Uri) = viewModelScope.launch {
         try {
@@ -539,6 +556,72 @@ class SettingsViewModel(private val repository: UserPreferencesRepository) : Vie
         if (hasChanges) {
             updatedCollections.forEach { repository.createOrUpdateCollection(it) }
         }
+    }
+
+    // --- NEW: Profile Export/Import ---
+
+    fun exportProfile(context: Context, uri: Uri, categories: Set<UserPreferencesRepository.BackupCategory>) = viewModelScope.launch(Dispatchers.IO) {
+        try {
+            val json = repository.exportPreferences(categories).first()
+            context.contentResolver.openOutputStream(uri)?.use { outputStream ->
+                outputStream.write(json.toByteArray())
+            }
+            launch(Dispatchers.Main) {
+                android.widget.Toast.makeText(context, "Profile Exported Successfully", android.widget.Toast.LENGTH_SHORT).show()
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            launch(Dispatchers.Main) {
+                android.widget.Toast.makeText(context, "Export Failed: ${e.message}", android.widget.Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    fun importProfile(context: Context, uri: Uri, categories: Set<UserPreferencesRepository.BackupCategory>) = viewModelScope.launch(Dispatchers.IO) {
+        try {
+            val json = context.contentResolver.openInputStream(uri)?.bufferedReader().use { it?.readText() }
+            if (json != null) {
+                repository.importPreferences(json, categories)
+                // Reload dictionaries to reflect potential changes in dictionary directories or collections
+                launch(Dispatchers.Main) {
+                    reloadAllDictionaries(context)
+                    android.widget.Toast.makeText(context, "Profile Restored Successfully", android.widget.Toast.LENGTH_SHORT).show()
+                }
+            } else {
+                launch(Dispatchers.Main) {
+                    android.widget.Toast.makeText(context, "Failed to read file", android.widget.Toast.LENGTH_SHORT).show()
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            launch(Dispatchers.Main) {
+                android.widget.Toast.makeText(context, "Import Failed: ${e.message}", android.widget.Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    fun extractDictionary(context: Context, dictId: String, uri: Uri) = viewModelScope.launch {
+        _isExtracting.value = true
+        _extractionProgress.value = 0f
+        _extractionStatus.value = "Starting..."
+
+        try {
+            DictionaryManager.extractDictionary(context, dictId, uri) { progress, status ->
+                _extractionProgress.value = progress
+                _extractionStatus.value = status
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            _extractionStatus.value = "Error: ${e.message}"
+        } finally {
+            _isExtracting.value = false
+        }
+    }
+
+    fun resetExtractionState() {
+        _isExtracting.value = false
+        _extractionProgress.value = 0f
+        _extractionStatus.value = ""
     }
 
     class SettingsViewModelFactory(private val repository: UserPreferencesRepository) :

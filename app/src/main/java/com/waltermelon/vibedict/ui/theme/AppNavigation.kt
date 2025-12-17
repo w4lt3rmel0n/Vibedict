@@ -22,6 +22,13 @@ object Screen {
     fun createCollectionDetailRoute(id: String) = "collection_detail/$id"
     fun createRouteForWord(word: String) = "word_result/$word"
     fun createDictionaryDetailRoute(id: String) = "dictionary_detail/$id"
+
+    const val ENTRY_LIST = "entry_list/{dictId}"
+    const val ENTRY_DETAIL = "entry_detail/{dictId}/{word}"
+
+    fun createEntryListRoute(dictId: String) = "entry_list/$dictId"
+    // Helper to URL encode the word to handle special characters in the route
+    fun createEntryDetailRoute(dictId: String, word: String) = "entry_detail/$dictId/${java.net.URLEncoder.encode(word, java.nio.charset.StandardCharsets.UTF_8.toString())}"
 }
 
 // --- UPDATED EXTENSION FUNCTION ---

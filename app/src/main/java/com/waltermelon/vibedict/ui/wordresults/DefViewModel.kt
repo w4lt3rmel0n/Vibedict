@@ -32,6 +32,13 @@ class DefViewModel(
         0.5f
     )
 
+    // --- ADDED: WebView Mode ---
+    val useWebViewMode = repository.useWebViewMode.stateIn(
+        viewModelScope,
+        kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5000),
+        false
+    )
+
     // --- ADDED ---
     private val _navigateToWord = MutableStateFlow<String?>(null)
     val navigateToWord: StateFlow<String?> = _navigateToWord.asStateFlow()
