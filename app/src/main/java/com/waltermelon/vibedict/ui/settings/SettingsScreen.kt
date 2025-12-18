@@ -448,11 +448,11 @@ fun BackupRestoreOptionsDialog(
 
                 allCategories.forEach { category ->
                     val label = when (category) {
-                        UserPreferencesRepository.BackupCategory.DICTIONARY_CONFIG -> "Dictionary Configurations"
-                        UserPreferencesRepository.BackupCategory.AI_PROMPTS -> "AI Prompts"
-                        UserPreferencesRepository.BackupCategory.WEB_SEARCH -> "Web Search Configurations"
-                        UserPreferencesRepository.BackupCategory.COLLECTIONS -> "Collections"
-                        UserPreferencesRepository.BackupCategory.BOOKMARKS -> "Bookmarks"
+                        UserPreferencesRepository.BackupCategory.DICTIONARY_CONFIG -> stringResource(R.string.backup_dict_config)
+                        UserPreferencesRepository.BackupCategory.AI_PROMPTS -> stringResource(R.string.backup_ai_prompts)
+                        UserPreferencesRepository.BackupCategory.WEB_SEARCH -> stringResource(R.string.backup_web_search)
+                        UserPreferencesRepository.BackupCategory.COLLECTIONS -> stringResource(R.string.backup_collections)
+                        UserPreferencesRepository.BackupCategory.BOOKMARKS -> stringResource(R.string.backup_bookmarks)
                     }
                     Row(
                         modifier = Modifier
@@ -547,7 +547,7 @@ private fun MiscActionsRow() {
         ) {
             Icon(
                 painterResource(R.drawable.ic_github),
-                contentDescription = "GitHub",
+                contentDescription = stringResource(R.string.github),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(24.dp)
             )
@@ -565,7 +565,7 @@ private fun MiscActionsRow() {
         ) {
             Icon(
                 Icons.Outlined.BugReport,
-                contentDescription = "Report Bug",
+                contentDescription = stringResource(R.string.report_bug),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
@@ -598,7 +598,7 @@ fun LogDialog(onDismiss: () -> Unit) {
                 modifier = Modifier.padding(16.dp)
             ) {
                 Text(
-                    text = "Application Logs",
+                    text = stringResource(R.string.app_logs),
                     style = MaterialTheme.typography.titleLarge,
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
@@ -611,9 +611,9 @@ fun LogDialog(onDismiss: () -> Unit) {
                 ) {
                     OutlinedTextField(
                         readOnly = true,
-                        value = "$selectedDays Days",
+                        value = stringResource(R.string.days_format, selectedDays),
                         onValueChange = { },
-                        label = { Text("Time Frame") },
+                        label = { Text(stringResource(R.string.time_frame)) },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
                         colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
                         modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, true).fillMaxWidth()
@@ -624,7 +624,7 @@ fun LogDialog(onDismiss: () -> Unit) {
                     ) {
                         options.forEach { days ->
                             DropdownMenuItem(
-                                text = { Text("$days Days") },
+                                text = { Text(stringResource(R.string.days_format, days)) },
                                 onClick = {
                                     selectedDays = days
                                     expanded = false
@@ -668,9 +668,9 @@ fun LogDialog(onDismiss: () -> Unit) {
                          uri?.let { 
                              logs?.let { logContent ->
                                  if (LogUtil.saveLogsToUri(context, it, logContent)) {
-                                     Toast.makeText(context, "Saved to ${it.path}", Toast.LENGTH_LONG).show()
+                                     Toast.makeText(context, context.getString(R.string.log_saved, it.path ?: ""), Toast.LENGTH_LONG).show()
                                  } else {
-                                     Toast.makeText(context, "Failed to save logs", Toast.LENGTH_SHORT).show()
+                                     Toast.makeText(context, context.getString(R.string.log_save_failed), Toast.LENGTH_SHORT).show()
                                  }
                              }
                          }
@@ -679,7 +679,7 @@ fun LogDialog(onDismiss: () -> Unit) {
                     TextButton(onClick = {
                         exportLogLauncher.launch("vibedict_logs_${System.currentTimeMillis()}.log")
                     }) {
-                        Text("Export .log")
+                        Text(stringResource(R.string.export_log))
                     }
                     
                     TextButton(onClick = {
@@ -687,7 +687,7 @@ fun LogDialog(onDismiss: () -> Unit) {
                              LogUtil.shareLogText(context, logContent)
                         }
                     }) {
-                        Text("Share")
+                        Text(stringResource(R.string.share))
                     }
                     
                     Spacer(modifier = Modifier.width(8.dp))
