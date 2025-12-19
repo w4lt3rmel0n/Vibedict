@@ -270,13 +270,13 @@ fun DefScreen(
                                         @android.annotation.SuppressLint("ResourceType")
                                         override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {
                                             val url = request?.url?.toString() ?: ""
-                                            if (url.startsWith("https://waltermelon.app/")) {
+                                            if (url.startsWith("https://app.vibedict/")) {
                                                 android.util.Log.d("MdictJNI", "WebView Request Intercepted: $url")
                                             }
                                             
                                             // Serve local fonts
-                                            if (url.startsWith("https://waltermelon.app/fonts/")) {
-                                                val requestedFileNameEncoded = url.substringAfter("https://waltermelon.app/fonts/")
+                                            if (url.startsWith("https://app.vibedict/fonts/")) {
+                                                val requestedFileNameEncoded = url.substringAfter("https://app.vibedict/fonts/")
                                                 android.util.Log.d("MdictJNI", "Intercepting font request: $requestedFileNameEncoded")
                                                 try {
                                                     val requestedFileName = java.net.URLDecoder.decode(requestedFileNameEncoded, "UTF-8")
@@ -304,9 +304,9 @@ fun DefScreen(
                                             
                                             // Serve MDD resources - need to determine which dict this is for
                                             var resourceKey = ""
-                                            if (url.startsWith("https://waltermelon.app/")) {
-                                                if (url != "https://waltermelon.app/") {
-                                                    resourceKey = url.substringAfter("https://waltermelon.app/")
+                                            if (url.startsWith("https://app.vibedict/")) {
+                                                if (url != "https://app.vibedict/") {
+                                                    resourceKey = url.substringAfter("https://app.vibedict/")
                                                 }
                                             }
                                             
@@ -410,7 +410,7 @@ fun DefScreen(
                                 )
                                 
                                 webView.loadDataWithBaseURL(
-                                    "https://waltermelon.app/",
+                                    "https://app.vibedict/",
                                     html,
                                     "text/html",
                                     "UTF-8",
@@ -763,13 +763,13 @@ fun DictionaryBodyItem(
                                 @android.annotation.SuppressLint("ResourceType")
                                 override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {
                                     val url = request?.url?.toString() ?: ""
-                                    if (url.startsWith("https://waltermelon.app/")) {
+                                    if (url.startsWith("https://app.vibedict/")) {
                                         android.util.Log.d("MdictJNI", "WebView Request Intercepted: $url")
                                     }
 
                                     // --- A. Serve Local Fonts ---
-                                    if (url.startsWith("https://waltermelon.app/fonts/")) {
-                                        val requestedFileNameEncoded = url.substringAfter("https://waltermelon.app/fonts/")
+                                    if (url.startsWith("https://app.vibedict/fonts/")) {
+                                        val requestedFileNameEncoded = url.substringAfter("https://app.vibedict/fonts/")
                                         android.util.Log.d("MdictJNI", "Intercepting font request: $requestedFileNameEncoded")
                                          try {
                                             val requestedFileName = java.net.URLDecoder.decode(requestedFileNameEncoded, "UTF-8")
@@ -797,9 +797,9 @@ fun DictionaryBodyItem(
                                     var resourceKey = ""
                                     if (url.startsWith("entry://")) {
                                         resourceKey = url.substringAfter("entry://")
-                                    } else if (url.startsWith("https://waltermelon.app/")) {
-                                        if (url != "https://waltermelon.app/") {
-                                            resourceKey = url.substringAfter("https://waltermelon.app/")
+                                    } else if (url.startsWith("https://app.vibedict/")) {
+                                        if (url != "https://app.vibedict/") {
+                                            resourceKey = url.substringAfter("https://app.vibedict/")
                                         }
                                     } else if (url.startsWith("content://")) {
                                         resourceKey = if (url.startsWith("content://mdict.cn/")) {
@@ -882,7 +882,7 @@ fun DictionaryBodyItem(
                                 override fun onPageFinished(view: WebView?, url: String?) {
                                     super.onPageFinished(view, url)
 
-                                    if (url != null && url != "https://waltermelon.app/") {
+                                    if (url != null && url != "https://app.vibedict/") {
                                         val adCss = AdBlocker.COSMETIC_CSS.replace("\n", " ")
                                         view?.evaluateJavascript("""
                                         var style = document.createElement('style');
@@ -912,7 +912,7 @@ fun DictionaryBodyItem(
                             }
                         }
                         else {
-                            val isDisplayingLocalContent = webView.url == "https://waltermelon.app/"
+                            val isDisplayingLocalContent = webView.url == "https://app.vibedict/"
 
                             if (!isDisplayingLocalContent) {
                                 val transparencyCss = "html, body { background-color: transparent !important; }"
@@ -930,12 +930,12 @@ fun DictionaryBodyItem(
                                     @font-face {
                                         font-family: 'Roboto Flex';
                                         font-style: normal;
-                                        src: url('https://waltermelon.app/fonts/roboto_flex.ttf');
+                                        src: url('https://app.vibedict/fonts/roboto_flex.ttf');
                                     }
                                     @font-face {
                                         font-family: 'Roboto Flex';
                                         font-style: italic;
-                                        src: url('https://waltermelon.app/fonts/roboto_flex.ttf');
+                                        src: url('https://app.vibedict/fonts/roboto_flex.ttf');
                                         font-variation-settings: 'slnt' -10;
                                     }
                                     body {
@@ -956,14 +956,14 @@ fun DictionaryBodyItem(
                                         // Otherwise -> Dictionary resource (relative path)
                                         val url = if (path.startsWith("fonts/")) {
                                             val encodedFileName = java.net.URLEncoder.encode(fontFileName, "UTF-8").replace("+", "%20")
-                                            "https://waltermelon.app/fonts/$encodedFileName"
+                                            "https://app.vibedict/fonts/$encodedFileName"
                                         } else {
                                             // Dictionary resource: Use full relative path
                                             // Encode each segment to ensure valid URL
                                             val encodedPath = path.split("/").joinToString("/") { 
                                                  java.net.URLEncoder.encode(it, "UTF-8").replace("+", "%20")
                                             }
-                                            "https://waltermelon.app/$encodedPath"
+                                            "https://app.vibedict/$encodedPath"
                                         }
 
                                         """
@@ -1014,7 +1014,7 @@ fun DictionaryBodyItem(
                                 val finalHtml = "<html><head></head><body>$content<style>$finalCss</style><script>$sanitizedCustomJs</script>$linkFixerJs</body></html>"
 
                                 webView.loadDataWithBaseURL(
-                                    "https://waltermelon.app/",
+                                    "https://app.vibedict/",
                                     finalHtml,
                                     "text/html",
                                     "UTF-8",
