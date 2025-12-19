@@ -118,6 +118,14 @@ fun DictionaryListScreen(navController: NavController) {
                             },
                             leadingIcon = { Icon(Icons.Outlined.CreateNewFolder, null) }
                         )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.add_local_dict_extracted)) },
+                            onClick = {
+                                showMenu = false
+                                directoryPickerLauncher.launch(null)
+                            },
+                            leadingIcon = { Icon(Icons.Outlined.CreateNewFolder, null) }
+                        )
                         // --- Add Web Search Engine Option ---
                         DropdownMenuItem(
                             text = { Text(stringResource(R.string.add_web_engine)) },
@@ -142,13 +150,13 @@ fun DictionaryListScreen(navController: NavController) {
                         )
                         // -----------------------------------------
                         DropdownMenuItem(
-                            text = { Text(if (isManageMode) stringResource(R.string.done_managing) else stringResource(R.string.manage_folders)) },
+                            text = { Text(if (isManageMode) stringResource(R.string.done_managing) else stringResource(R.string.remove_dicts)) },
                             onClick = {
                                 showMenu = false
                                 isManageMode = !isManageMode
                             },
                             leadingIcon = {
-                                Icon(if (isManageMode) Icons.Outlined.Check else Icons.Outlined.Delete, null)
+                                Icon(if (isManageMode) Icons.Outlined.Check else Icons.Outlined.PlaylistRemove, null)
                             }
                         )
                     }
@@ -183,33 +191,7 @@ fun DictionaryListScreen(navController: NavController) {
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 if (isManageMode) {
-                    item {
-                        DictSettingsCard(title = stringResource(R.string.linked_folders)) {
-                            if (savedDirs.isEmpty()) {
-                                Text(stringResource(R.string.no_folders_linked), Modifier.padding(16.dp))
-                            } else {
-                                savedDirs.forEach { dirUri ->
-                                    val decodedPath = try {
-                                        Uri.decode(dirUri).substringAfterLast('/')
-                                    } catch (e: Exception) {
-                                        stringResource(R.string.invalid_path)
-                                    }
-                                    DictSettingsRow(
-                                        icon = Icons.Outlined.Folder,
-                                        title = decodedPath,
-                                        subtitle = dirUri,
-                                        trailingContent = {
-                                            IconButton(onClick = {
-                                                viewModel.removeDictionaryFolder(context, dirUri)
-                                            }) {
-                                                Icon(Icons.Outlined.Delete, stringResource(R.string.remove), tint = MaterialTheme.colorScheme.error)
-                                            }
-                                        }
-                                    )
-                                }
-                            }
-                        }
-                    }
+                // (Legacy Linked Folders section removed)
                 }
 
                 item {
@@ -271,6 +253,7 @@ private fun DictionaryRow(
         else -> Icons.Outlined.Book
     }
 
+    val context = LocalContext.current
     DictSettingsRow(
         icon = icon,
         title = displayName,
@@ -283,7 +266,13 @@ private fun DictionaryRow(
         } else null,
         trailingContent = if (!isManageMode) {
             { ArrowIcon() }
-        } else null
+        } else {
+            {
+                IconButton(onClick = { viewModel.removeDictionary(context, dict.id) }) {
+                    Icon(Icons.Outlined.RemoveCircle, stringResource(R.string.remove), tint = MaterialTheme.colorScheme.error)
+                }
+            }
+        }
     )
 }
 
@@ -301,6 +290,12 @@ fun DictionaryDetailScreen(navController: NavController, dictId: String) {
 
     val isWebEngine = dictionary?.webUrl != null
     val isAIPrompt = dictionary?.aiPrompt != null
+    // An extracted dictionary has an MDX engine but no MDD engines, and is not a web/AI dictionary.
+    // It must also have a sourceUri (which standard local dicts have).
+    // Standard local dict with NO resources (no MDD) would also fit this.
+    // But "Extracted" implies we rely on the folder for resources.
+    // So distinct is: mddEngines is empty && sourceUri != null && !isWeb && !isAI
+    val isExtracted = dictionary != null && !isWebEngine && !isAIPrompt && dictionary.mddEngines.isEmpty() && dictionary.sourceUri != null
 
     // -- Display Name Logic --
     val savedName by viewModel.getDictionaryName(dictId).collectAsState(initial = "")
@@ -466,9 +461,10 @@ fun DictionaryDetailScreen(navController: NavController, dictId: String) {
                             modifier = Modifier.align(Alignment.BottomEnd).padding(6.dp).size(20.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary),
                             contentAlignment = Alignment.Center
                         ) {
-                            val icon = when {
+                                val icon = when {
                                 isWebEngine -> Icons.Outlined.Public
                                 isAIPrompt -> Icons.Outlined.SmartToy
+                                isExtracted -> Icons.Outlined.FolderOpen
                                 else -> Icons.Default.Upload
                             }
                             Icon(icon, null, tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(12.dp))
@@ -594,89 +590,147 @@ fun DictionaryDetailScreen(navController: NavController, dictId: String) {
 
                     HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
 
-                    // MDD Row
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        verticalAlignment = Alignment.Top
-                    ) {
-                        Icon(
-                            Icons.Outlined.Image,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.secondary,
-                            modifier = Modifier.padding(top = 2.dp)
-                        )
-                        Spacer(modifier = Modifier.width(16.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        stringResource(R.string.mdd_file),
-                                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
-                                    )
-                                    Text(
-                                        mddSubtitle,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                                if (mddCount > 0) {
+                    // MDD Row or Source Folder Row
+                    if (isExtracted) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.Top
+                        ) {
+                            Icon(
+                                Icons.Outlined.Folder,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.secondary,
+                                modifier = Modifier.padding(top = 2.dp)
+                            )
+                            Spacer(modifier = Modifier.width(16.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            stringResource(R.string.source_folder),
+                                            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
+                                        )
+                                        Text(
+                                            dictionary?.sourceUri ?: "",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
                                     Icon(Icons.Outlined.CheckCircle, null, tint = MaterialTheme.colorScheme.primary)
-                                } else {
-                                    Icon(Icons.Outlined.Error, null, tint = MaterialTheme.colorScheme.error)
                                 }
-                            }
-
-                            if (mddCount > 0) {
                                 Spacer(modifier = Modifier.height(12.dp))
-                                
-                                var showMddMenu by remember { mutableStateOf(false) }
-                                val extractLauncher = rememberLauncherForActivityResult(
-                                    contract = ActivityResultContracts.OpenDocumentTree()
-                                ) { uri: Uri? ->
-                                    if (uri != null) {
-                                        viewModel.extractDictionary(context, dictId, uri)
+                                Text(
+                                    stringResource(R.string.open_folder),
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.clickable {
+                                        val uri = Uri.parse(dictionary?.sourceUri)
+                                        val intent = Intent(Intent.ACTION_VIEW)
+                                        intent.setDataAndType(uri, androidx.documentfile.provider.DocumentFile.fromTreeUri(context, uri)?.type ?: "resource/folder")
+                                        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                        // Attempt to start activity. Catch exception if no file explorer found.
+                                        try {
+                                            context.startActivity(intent)
+                                        } catch (e: Exception) {
+                                            android.widget.Toast.makeText(context, "Could not open folder", android.widget.Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+                                )
+                            }
+                        }
+                    } else {
+                        // Standard MDD Row
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.Top
+                        ) {
+                            Icon(
+                                Icons.Outlined.Image,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.secondary,
+                                modifier = Modifier.padding(top = 2.dp)
+                            )
+                            Spacer(modifier = Modifier.width(16.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            stringResource(R.string.mdd_file),
+                                            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
+                                        )
+                                        Text(
+                                            mddSubtitle,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                    if (mddCount > 0) {
+                                        Icon(Icons.Outlined.CheckCircle, null, tint = MaterialTheme.colorScheme.primary)
+                                    } else {
+                                        Icon(Icons.Outlined.Error, null, tint = MaterialTheme.colorScheme.error)
                                     }
                                 }
-                                var showFileViewer by remember { mutableStateOf(false) }
 
-                                Box {
-                                    Text(
-                                        stringResource(R.string.view_files),
-                                        style = MaterialTheme.typography.labelLarge,
-                                        color = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.clickable { showMddMenu = true }
-                                    )
-                                    DropdownMenu(
-                                        expanded = showMddMenu,
-                                        onDismissRequest = { showMddMenu = false }
-                                    ) {
-                                        DropdownMenuItem(
-                                            text = { Text("Extract and save") },
-                                            onClick = {
-                                                showMddMenu = false
-                                                extractLauncher.launch(null)
-                                            },
-                                            leadingIcon = { Icon(Icons.Outlined.Save, null) }
-                                        )
-                                        DropdownMenuItem(
-                                            text = { Text("View files") },
-                                            onClick = {
-                                                showMddMenu = false
-                                                showFileViewer = true
-                                            },
-                                            leadingIcon = { Icon(Icons.Outlined.FolderOpen, null) }
-                                        )
+                                if (mddCount > 0) {
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    
+                                    var showMddMenu by remember { mutableStateOf(false) }
+                                    val extractLauncher = rememberLauncherForActivityResult(
+                                        contract = ActivityResultContracts.OpenDocumentTree()
+                                    ) { uri: Uri? ->
+                                        if (uri != null) {
+                                            viewModel.extractDictionary(context, dictId, uri)
+                                        }
                                     }
-                                }
+                                    var showFileViewer by remember { mutableStateOf(false) }
 
-                                if (showFileViewer) {
-                                    MddFileViewerDialog(dictId = dictId, onDismiss = { showFileViewer = false })
+                                    Box {
+                                        Text(
+                                            stringResource(R.string.view_files),
+                                            style = MaterialTheme.typography.labelLarge,
+                                            color = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.clickable { showMddMenu = true }
+                                        )
+                                        DropdownMenu(
+                                            expanded = showMddMenu,
+                                            onDismissRequest = { showMddMenu = false }
+                                        ) {
+                                            DropdownMenuItem(
+                                                text = { Text("Extract and save") },
+                                                onClick = {
+                                                    showMddMenu = false
+                                                    extractLauncher.launch(null)
+                                                },
+                                                leadingIcon = { Icon(Icons.Outlined.Save, null) }
+                                            )
+                                            DropdownMenuItem(
+                                                text = { Text("View files") },
+                                                onClick = {
+                                                    showMddMenu = false
+                                                    showFileViewer = true
+                                                },
+                                                leadingIcon = { Icon(Icons.Outlined.FolderOpen, null) }
+                                            )
+                                        }
+                                    }
+
+                                    if (showFileViewer) {
+                                        MddFileViewerDialog(dictId = dictId, onDismiss = { showFileViewer = false })
+                                    }
                                 }
                             }
                         }
@@ -685,115 +739,219 @@ fun DictionaryDetailScreen(navController: NavController, dictId: String) {
             }
 
             // --- Configuration Section ---
-            DictSettingsCard(title = stringResource(R.string.configuration)) {
-                DictSettingsRow(
-                    icon = Icons.Outlined.FormatPaint, title = stringResource(R.string.force_original_style),
-                    subtitle = stringResource(R.string.force_original_subtitle),
-                    trailingContent = { Switch(checked = forceOriginalStyle, onCheckedChange = { viewModel.setDictionaryForceStyle(dictId, it) }) }
-                )
-                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outlineVariant)
+            // --- Configuration Section ---
+            if (isExtracted) {
+                 DictSettingsCard(title = stringResource(R.string.extracted_config)) {
+                     DictSettingsRow(
+                         icon = Icons.Outlined.FormatPaint, title = stringResource(R.string.force_original_style),
+                         subtitle = stringResource(R.string.force_original_subtitle),
+                         trailingContent = { Switch(checked = forceOriginalStyle, onCheckedChange = { viewModel.setDictionaryForceStyle(dictId, it) }) }
+                     )
+                     HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outlineVariant)
+                     
+                     DictSettingsRow(
+                         icon = Icons.Outlined.Refresh,
+                         title = stringResource(R.string.rescan),
+                         onClick = {
+                             viewModel.reloadAllDictionaries(context)
+                             android.widget.Toast.makeText(context, "Rescanning...", android.widget.Toast.LENGTH_SHORT).show()
+                         }
+                     )
 
-                // CSS & JS Rows
-                val cssStatus = if (savedCss.isNotBlank() || fileCss.isNotBlank()) stringResource(R.string.css_loaded) else stringResource(R.string.no_css)
-                DictSettingsRow(
-                    icon = Icons.Outlined.Css, title = stringResource(R.string.css_config), subtitle = cssStatus,
-                    trailingContent = {
-                        Row {
-                            IconButton(onClick = { 
-                                pendingCssAction = { cssPicker.launch(arrayOf("text/css", "*/*")) }
-                                showCssWarning = true
-                            }) { Icon(Icons.Default.Upload, stringResource(R.string.upload)) }
-                            if (savedCss.isNotBlank()) {
-                                IconButton(onClick = { contentToView = savedCss; showCssDialog = true }) { Icon(Icons.Outlined.Visibility, stringResource(R.string.view)) }
-                                IconButton(onClick = { viewModel.deleteDictionaryCss(dictId) }) { Icon(Icons.Outlined.Delete, stringResource(R.string.delete), tint = MaterialTheme.colorScheme.error) }
-                            } else if (fileCss.isNotBlank()) {
-                                IconButton(onClick = { contentToView = fileCss; showCssDialog = true }) { Icon(Icons.Outlined.Visibility, stringResource(R.string.view_file_css)) }
+                     // --- DETECTED FONTS ---
+                     val fontList = savedFontPaths.split(",").filter { it.isNotBlank() }
+                     if (fontList.isNotEmpty()) {
+                         HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outlineVariant)
+
+                         val fontCount = fontList.size
+                         val fontSubtitle = stringResource(R.string.fonts_loaded, fontCount)
+
+                         DictSettingsRow(
+                             icon = Icons.Outlined.FontDownload,
+                             title = stringResource(R.string.custom_fonts),
+                             subtitle = fontSubtitle,
+                             trailingContent = {
+                                 // Allow adding manual fonts even for extracted
+                                 IconButton(onClick = { fontPicker.launch(arrayOf("font/*", "application/x-font-ttf", "application/font-sfnt", "*/*")) }) {
+                                     Icon(Icons.Default.Add, stringResource(R.string.add_font))
+                                 }
+                             }
+                         )
+
+                         Column(modifier = Modifier.fillMaxWidth()) {
+                             fontList.forEach { path ->
+                                 val isManual = path.startsWith("fonts/")
+                                 val fileName = path.substringAfterLast("/")
+                                 val fontName = fileName.substringBeforeLast(".")
+
+                                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), modifier = Modifier.padding(start = 56.dp))
+
+                                 Row(
+                                     modifier = Modifier.fillMaxWidth().padding(start = 72.dp, end = 16.dp, top = 8.dp, bottom = 8.dp),
+                                     verticalAlignment = Alignment.CenterVertically,
+                                     horizontalArrangement = Arrangement.SpaceBetween
+                                 ) {
+                                     Column(modifier = Modifier.weight(1f)) {
+                                         Text(fontName, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                                         Text(
+                                             if (isManual) "font-family: '$fontName';" else "Detected: $path",
+                                             style = MaterialTheme.typography.labelSmall,
+                                             color = MaterialTheme.colorScheme.secondary,
+                                             fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                                         )
+                                     }
+                                     
+                                     if (isManual) {
+                                         Row {
+                                             IconButton(
+                                                 onClick = {
+                                                     fontToRenamePath = path
+                                                     fontRenameInput = fontName
+                                                     showRenameFontDialog = true
+                                                 },
+                                                 modifier = Modifier.size(32.dp)
+                                             ) {
+                                                 Icon(Icons.Outlined.Edit, stringResource(R.string.rename), modifier = Modifier.size(18.dp))
+                                             }
+                                             IconButton(
+                                                 onClick = { viewModel.removeDictionaryFont(context, dictId, path) },
+                                                 modifier = Modifier.size(32.dp)
+                                             ) {
+                                                 Icon(Icons.Outlined.Close, stringResource(R.string.remove), tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(18.dp))
+                                             }
+                                         }
+                                     } else {
+                                          Icon(Icons.Outlined.FolderOpen, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
+                                     }
+                                 }
+                             }
+                         }
+                     } else {
+                         // Even if empty, show option to add manual fonts?
+                         HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outlineVariant)
+                         DictSettingsRow(
+                             icon = Icons.Outlined.FontDownload,
+                             title = stringResource(R.string.custom_fonts),
+                             subtitle = stringResource(R.string.no_fonts_loaded),
+                             trailingContent = {
+                                 IconButton(onClick = { fontPicker.launch(arrayOf("font/*", "application/x-font-ttf", "application/font-sfnt", "*/*")) }) {
+                                     Icon(Icons.Default.Add, stringResource(R.string.add_font))
+                                 }
+                             }
+                         )
+                     }
+                 }
+            } else {
+                DictSettingsCard(title = stringResource(R.string.configuration)) {
+                    DictSettingsRow(
+                        icon = Icons.Outlined.FormatPaint, title = stringResource(R.string.force_original_style),
+                        subtitle = stringResource(R.string.force_original_subtitle),
+                        trailingContent = { Switch(checked = forceOriginalStyle, onCheckedChange = { viewModel.setDictionaryForceStyle(dictId, it) }) }
+                    )
+                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outlineVariant)
+
+                    // CSS & JS Rows
+                    val cssStatus = if (savedCss.isNotBlank() || fileCss.isNotBlank()) stringResource(R.string.css_loaded) else stringResource(R.string.no_css)
+                    DictSettingsRow(
+                        icon = Icons.Outlined.Css, title = stringResource(R.string.css_config), subtitle = cssStatus,
+                        trailingContent = {
+                            Row {
                                 IconButton(onClick = { 
-                                     pendingCssAction = { viewModel.setDictionaryCss(dictId, fileCss) }
-                                     showCssWarning = true
-                                }) { Icon(Icons.Outlined.SaveAlt, stringResource(R.string.apply_file_css)) }
-                            }
-                        }
-                    }
-                )
-
-                val jsStatus = if (savedJs.isNotBlank() || fileJs.isNotBlank()) stringResource(R.string.js_loaded) else stringResource(R.string.no_js)
-                DictSettingsRow(
-                    icon = Icons.Outlined.Javascript, title = stringResource(R.string.js_config), subtitle = jsStatus,
-                    trailingContent = {
-                        Row {
-                            IconButton(onClick = { 
-                                pendingJsAction = { jsPicker.launch(arrayOf("application/javascript", "text/plain", "*/*")) }
-                                showJsWarning = true
-                            }) { Icon(Icons.Default.Upload, stringResource(R.string.upload)) }
-                            if (savedJs.isNotBlank()) {
-                                IconButton(onClick = { contentToView = savedJs; showJsDialog = true }) { Icon(Icons.Outlined.Visibility, stringResource(R.string.view)) }
-                                IconButton(onClick = { viewModel.setDictionaryJs(dictId, "") }) { Icon(Icons.Outlined.Delete, stringResource(R.string.delete), tint = MaterialTheme.colorScheme.error) }
-                            } else if (fileJs.isNotBlank()) {
-                                IconButton(onClick = { contentToView = fileJs; showJsDialog = true }) { Icon(Icons.Outlined.Visibility, stringResource(R.string.view_file_js)) }
-                                IconButton(onClick = { 
-                                     pendingJsAction = { viewModel.setDictionaryJs(dictId, fileJs) }
-                                     showJsWarning = true
-                                }) { Icon(Icons.Outlined.SaveAlt, stringResource(R.string.apply_file_js)) }
-                            }
-                        }
-                    }
-                )
-
-                // --- CUSTOM FONTS ---
-                val fontList = savedFontPaths.split(",").filter { it.isNotBlank() }
-                val fontCount = fontList.size
-                val fontSubtitle = if (fontCount == 0) stringResource(R.string.no_fonts_loaded) else stringResource(R.string.fonts_loaded, fontCount)
-
-                DictSettingsRow(
-                    icon = Icons.Outlined.FontDownload,
-                    title = stringResource(R.string.custom_fonts),
-                    subtitle = fontSubtitle,
-                    trailingContent = {
-                        IconButton(onClick = { fontPicker.launch(arrayOf("font/*", "application/x-font-ttf", "application/font-sfnt", "*/*")) }) {
-                            Icon(Icons.Default.Add, stringResource(R.string.add_font))
-                        }
-                    }
-                )
-
-                if (fontList.isNotEmpty()) {
-                    Column(modifier = Modifier.fillMaxWidth()) {
-                        fontList.forEach { path ->
-                            val fileName = path.substringAfterLast("/")
-                            val fontName = fileName.substringBeforeLast(".")
-
-                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), modifier = Modifier.padding(start = 56.dp))
-
-                            Row(
-                                modifier = Modifier.fillMaxWidth().padding(start = 72.dp, end = 16.dp, top = 8.dp, bottom = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(fontName, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
-                                    Text(
-                                        "font-family: '$fontName';",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.secondary,
-                                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
-                                    )
+                                    pendingCssAction = { cssPicker.launch(arrayOf("text/css", "*/*")) }
+                                    showCssWarning = true
+                                }) { Icon(Icons.Default.Upload, stringResource(R.string.upload)) }
+                                if (savedCss.isNotBlank()) {
+                                    IconButton(onClick = { contentToView = savedCss; showCssDialog = true }) { Icon(Icons.Outlined.Visibility, stringResource(R.string.view)) }
+                                    IconButton(onClick = { viewModel.deleteDictionaryCss(dictId) }) { Icon(Icons.Outlined.Delete, stringResource(R.string.delete), tint = MaterialTheme.colorScheme.error) }
+                                } else if (fileCss.isNotBlank()) {
+                                    IconButton(onClick = { contentToView = fileCss; showCssDialog = true }) { Icon(Icons.Outlined.Visibility, stringResource(R.string.view_file_css)) }
+                                    IconButton(onClick = { 
+                                         pendingCssAction = { viewModel.setDictionaryCss(dictId, fileCss) }
+                                         showCssWarning = true
+                                    }) { Icon(Icons.Outlined.SaveAlt, stringResource(R.string.apply_file_css)) }
                                 }
-                                Row {
-                                    IconButton(
-                                        onClick = {
-                                            fontToRenamePath = path
-                                            fontRenameInput = fontName
-                                            showRenameFontDialog = true
-                                        },
-                                        modifier = Modifier.size(32.dp)
-                                    ) {
-                                        Icon(Icons.Outlined.Edit, stringResource(R.string.rename), modifier = Modifier.size(18.dp))
+                            }
+                        }
+                    )
+
+                    val jsStatus = if (savedJs.isNotBlank() || fileJs.isNotBlank()) stringResource(R.string.js_loaded) else stringResource(R.string.no_js)
+                    DictSettingsRow(
+                        icon = Icons.Outlined.Javascript, title = stringResource(R.string.js_config), subtitle = jsStatus,
+                        trailingContent = {
+                            Row {
+                                IconButton(onClick = { 
+                                    pendingJsAction = { jsPicker.launch(arrayOf("application/javascript", "text/plain", "*/*")) }
+                                    showJsWarning = true
+                                }) { Icon(Icons.Default.Upload, stringResource(R.string.upload)) }
+                                if (savedJs.isNotBlank()) {
+                                    IconButton(onClick = { contentToView = savedJs; showJsDialog = true }) { Icon(Icons.Outlined.Visibility, stringResource(R.string.view)) }
+                                    IconButton(onClick = { viewModel.setDictionaryJs(dictId, "") }) { Icon(Icons.Outlined.Delete, stringResource(R.string.delete), tint = MaterialTheme.colorScheme.error) }
+                                } else if (fileJs.isNotBlank()) {
+                                    IconButton(onClick = { contentToView = fileJs; showJsDialog = true }) { Icon(Icons.Outlined.Visibility, stringResource(R.string.view_file_js)) }
+                                    IconButton(onClick = { 
+                                         pendingJsAction = { viewModel.setDictionaryJs(dictId, fileJs) }
+                                         showJsWarning = true
+                                    }) { Icon(Icons.Outlined.SaveAlt, stringResource(R.string.apply_file_js)) }
+                                }
+                            }
+                        }
+                    )
+
+                    // --- CUSTOM FONTS ---
+                    val fontList = savedFontPaths.split(",").filter { it.isNotBlank() }
+                    val fontCount = fontList.size
+                    val fontSubtitle = if (fontCount == 0) stringResource(R.string.no_fonts_loaded) else stringResource(R.string.fonts_loaded, fontCount)
+
+                    DictSettingsRow(
+                        icon = Icons.Outlined.FontDownload,
+                        title = stringResource(R.string.custom_fonts),
+                        subtitle = fontSubtitle,
+                        trailingContent = {
+                            IconButton(onClick = { fontPicker.launch(arrayOf("font/*", "application/x-font-ttf", "application/font-sfnt", "*/*")) }) {
+                                Icon(Icons.Default.Add, stringResource(R.string.add_font))
+                            }
+                        }
+                    )
+
+                    if (fontList.isNotEmpty()) {
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            fontList.forEach { path ->
+                                val fileName = path.substringAfterLast("/")
+                                val fontName = fileName.substringBeforeLast(".")
+
+                                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), modifier = Modifier.padding(start = 56.dp))
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(start = 72.dp, end = 16.dp, top = 8.dp, bottom = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(fontName, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                                        Text(
+                                            "font-family: '$fontName';",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.secondary,
+                                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                                        )
                                     }
-                                    IconButton(
-                                        onClick = { viewModel.removeDictionaryFont(context, dictId, path) },
-                                        modifier = Modifier.size(32.dp)
-                                    ) {
-                                        Icon(Icons.Outlined.Close, stringResource(R.string.remove), tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(18.dp))
+                                    Row {
+                                        IconButton(
+                                            onClick = {
+                                                fontToRenamePath = path
+                                                fontRenameInput = fontName
+                                                showRenameFontDialog = true
+                                            },
+                                            modifier = Modifier.size(32.dp)
+                                        ) {
+                                            Icon(Icons.Outlined.Edit, stringResource(R.string.rename), modifier = Modifier.size(18.dp))
+                                        }
+                                        IconButton(
+                                            onClick = { viewModel.removeDictionaryFont(context, dictId, path) },
+                                            modifier = Modifier.size(32.dp)
+                                        ) {
+                                            Icon(Icons.Outlined.Close, stringResource(R.string.remove), tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(18.dp))
+                                        }
                                     }
                                 }
                             }

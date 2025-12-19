@@ -39,9 +39,9 @@
     <string name="pref_sys">Misc</string>
 
     <string name="pref_backup_profile">Backup Profile</string>
-    <string name="pref_backup_profile_subtitle">Export all settings and data to a file</string>
+    <string name="pref_backup_profile_subtitle">Export configurations and data to a file</string>
     <string name="pref_restore_profile">Restore Profile</string>
-    <string name="pref_restore_profile_subtitle">Restore settings and data from a backup file</string>
+    <string name="pref_restore_profile_subtitle">Restore configurations and data from a backup file</string>
 
     <string name="pref_language">Language</string>
     <string name="pref_dark_mode">Dark mode</string>
@@ -56,7 +56,7 @@
     <string name="pref_pinch_mode_subtitle">Renders content in an integrated HTML view with pinch-to-zoom</string>
 
     <string name="pref_manage_dicts">Manage dictionaries</string>
-    <string name="pref_manage_dicts_subtitle">Add or remove dictionaries</string>
+    <string name="pref_manage_dicts_subtitle">Add, remove or configure dictionaries</string>
     <string name="pref_manage_collections">Manage collections</string>
     <string name="pref_manage_collections_subtitle">Group dictionaries into collections</string>
     <string name="pref_llm_service">LLM Service</string>
@@ -64,10 +64,12 @@
     <string name="pref_app_info">Open system settings</string>
 
     <string name="config_dictionaries">Configure Dictionaries</string>
-    <string name="add_local_dict">Add local dictionary</string>
-    <string name="add_web_engine">Add web search engine</string>
-    <string name="add_ai_prompt">Add AI Prompt</string>
-    <string name="manage_folders">Manage folders</string>
+    <string name="add_local_dict">Add from a folder</string>
+    <string name="add_local_dict_extracted">Add from a folder (extracted)</string>
+    <string name="add_local_dict_zip">Add from an archive file</string>
+    <string name="add_web_engine">Add a web search engine</string>
+    <string name="add_ai_prompt">Add an AI prompt</string>
+    <string name="remove_dicts">Remove dictionaries</string>
     <string name="done_managing">Done managing</string>
     <string name="linked_folders">Linked Folders</string>
     <string name="loaded_dictionaries">Loaded Dictionaries</string>
@@ -186,4 +188,28 @@
     <string name="continue_text">Continue</string>
     <string name="view_entries">View Entries</string>
     <string name="view_files">View Files</string>
+
+    <!-- Backup Categories -->
+    <string name="backup_dict_config">Dictionary Configurations</string>
+    <string name="backup_ai_prompts">AI Prompts</string>
+    <string name="backup_web_search">Web Search Configurations</string>
+    <string name="backup_collections">Collections</string>
+    <string name="backup_bookmarks">Bookmarks</string>
+
+    <!-- Logs -->
+    <string name="app_logs">Application Logs</string>
+    <string name="time_frame">Time Frame</string>
+    <string name="days_format">%d Days</string>
+    <string name="export_log">Export .log</string>
+    <string name="share">Share</string>
+    <string name="log_saved">Saved to %s</string>
+    <string name="log_save_failed">Failed to save logs</string>
+
+    <!-- Misc -->
+    <string name="github">GitHub</string>
+    <string name="report_bug">Report Bug</string>
+    <string name="source_folder">Source Folder</string>
+    <string name="open_folder">Open Folder</string>
+    <string name="rescan">Rescan</string>
+    <string name="extracted_config">Configurations</string>
 </resources>

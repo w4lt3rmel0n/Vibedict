@@ -96,6 +96,9 @@ class UserPreferencesRepository(private val context: Context) {
         // --- NEW: WebView Mode ---
         val USE_WEBVIEW_MODE = booleanPreferencesKey("use_webview_mode")
 
+        // --- NEW: Removed Dictionaries ---
+        val REMOVED_DICTIONARY_IDS = stringSetPreferencesKey("removed_dictionary_ids")
+
     }
 
     // --- Existing Readers ---
@@ -110,6 +113,7 @@ class UserPreferencesRepository(private val context: Context) {
     val isFullText: Flow<Boolean> = dataStore.data.map { it[Keys.IS_FULL_TEXT] ?: false }
     val isRegexEnabled: Flow<Boolean> = dataStore.data.map { it[Keys.IS_REGEX_ENABLED] ?: false }
     val dictionaryDirectories: Flow<Set<String>> = dataStore.data.map { it[Keys.DICTIONARY_DIRS] ?: emptySet() }
+    val removedDictionaryIds: Flow<Set<String>> = dataStore.data.map { it[Keys.REMOVED_DICTIONARY_IDS] ?: emptySet() }
 
     val bookmarks: Flow<Set<String>> = dataStore.data.map { it[Keys.BOOKMARKS] ?: emptySet() }
     val useWildcard: Flow<Boolean> = dataStore.data.map { it[Keys.USE_WILDCARD] ?: false }
@@ -168,6 +172,15 @@ class UserPreferencesRepository(private val context: Context) {
     suspend fun removeDictionaryDirectory(uriString: String) = dataStore.edit { preferences ->
         val currentSet = preferences[Keys.DICTIONARY_DIRS] ?: emptySet()
         preferences[Keys.DICTIONARY_DIRS] = currentSet - uriString
+    }
+
+    suspend fun setRemovedDictionaryIds(ids: Set<String>) = dataStore.edit { preferences ->
+        preferences[Keys.REMOVED_DICTIONARY_IDS] = ids
+    }
+
+    suspend fun addRemovedDictionaryId(id: String) = dataStore.edit { preferences ->
+        val currentSet = preferences[Keys.REMOVED_DICTIONARY_IDS] ?: emptySet()
+        preferences[Keys.REMOVED_DICTIONARY_IDS] = currentSet + id
     }
 
     suspend fun toggleBookmark(word: String) = dataStore.edit { preferences ->
@@ -618,6 +631,7 @@ class UserPreferencesRepository(private val context: Context) {
             if (categories.contains(BackupCategory.DICTIONARY_CONFIG)) {
                 if (keyName.startsWith("dict_")) shouldInclude = true
                 if (keyName == Keys.DICTIONARY_DIRS.name) shouldInclude = true
+                if (keyName == Keys.REMOVED_DICTIONARY_IDS.name) shouldInclude = true
             }
             if (categories.contains(BackupCategory.AI_PROMPTS)) {
                 if (keyName == Keys.AI_PROMPTS.name) shouldInclude = true
@@ -699,6 +713,12 @@ class UserPreferencesRepository(private val context: Context) {
                                 val array = value as JSONArray
                                 for (i in 0 until array.length()) set.add(array.getString(i))
                                 prefs[Keys.DICTIONARY_DIRS] = set
+                            }
+                            Keys.REMOVED_DICTIONARY_IDS.name -> {
+                                val set = mutableSetOf<String>()
+                                val array = value as JSONArray
+                                for (i in 0 until array.length()) set.add(array.getString(i))
+                                prefs[Keys.REMOVED_DICTIONARY_IDS] = set
                             }
                             Keys.BOOKMARKS.name -> {
                                 val set = mutableSetOf<String>()

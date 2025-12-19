@@ -219,7 +219,20 @@ class SettingsViewModel(private val repository: UserPreferencesRepository) : Vie
         val prompts = repository.aiPrompts.first()
         val providers = repository.llmProviders.first()
 
-        DictionaryManager.reloadDictionaries(context, dirs, engines, prompts, providers)
+        // Get current removed IDs
+        val removed = repository.removedDictionaryIds.first()
+
+        // Force restoration for this folder
+        val restoring = setOf(uri.toString())
+
+        DictionaryManager.reloadDictionaries(context, dirs, engines, prompts, providers, removed, restoring)
+
+        // Update removed IDs: Remove any ID that is now loaded (meaning it was restored)
+        val loadedIds = DictionaryManager.loadedDictionaries.map { it.id }.toSet()
+        val newRemoved = removed - loadedIds
+        if (newRemoved.size != removed.size) {
+            repository.setRemovedDictionaryIds(newRemoved)
+        }
     }
 
     fun removeDictionaryFolder(context: Context, uriString: String) = viewModelScope.launch {
@@ -232,8 +245,9 @@ class SettingsViewModel(private val repository: UserPreferencesRepository) : Vie
         val engines = repository.webSearchEngines.first()
         val prompts = repository.aiPrompts.first()
         val providers = repository.llmProviders.first()
+        val removed = repository.removedDictionaryIds.first()
 
-        DictionaryManager.reloadDictionaries(context, dirs, engines, prompts, providers)
+        DictionaryManager.reloadDictionaries(context, dirs, engines, prompts, providers, removed)
 
         // FIX: Sync collections to remove "ghost" dictionaries
         // We get the list of valid IDs *after* the reload is complete
@@ -246,8 +260,39 @@ class SettingsViewModel(private val repository: UserPreferencesRepository) : Vie
         val engines = repository.webSearchEngines.first()
         val prompts = repository.aiPrompts.first()
         val providers = repository.llmProviders.first()
+        val removed = repository.removedDictionaryIds.first()
+        
         // Pass providers to DictionaryManager so it can use the API keys
-        DictionaryManager.reloadDictionaries(context, dirs, engines, prompts, providers)
+        DictionaryManager.reloadDictionaries(context, dirs, engines, prompts, providers, removed)
+    }
+
+    // --- NEW: Remove Single Dictionary with Folder Cleanup ---
+    fun removeDictionary(context: Context, dictId: String) = viewModelScope.launch {
+        // 1. Add to blacklist
+        repository.addRemovedDictionaryId(dictId)
+        
+        // 2. Check if we need to remove the folder itself
+        val dict = DictionaryManager.getDictionaryById(dictId)
+        val sourceUri = dict?.sourceUri
+        
+        if (sourceUri != null) {
+            // Count how many ACTIVE dictionaries are left in this folder (excluding the one being removed)
+            // Note: loadedDictionaries still contains 'dictId' at this moment.
+            val count = DictionaryManager.loadedDictionaries.count { 
+                it.sourceUri == sourceUri && it.id != dictId 
+            }
+            
+            if (count == 0) {
+                // This was the last dictionary. Remove the folder.
+                removeDictionaryFolder(context, sourceUri)
+                // Note: removeDictionaryFolder calls "reloadDictionaries" which updates the loaded list.
+                // We don't need to call reloadAllDictionaries again.
+                return@launch
+            }
+        }
+
+        // 3. Normal Reload (Only if folder wasn't removed)
+        reloadAllDictionaries(context)
     }
 
     // --- Dictionary Config ---
@@ -282,8 +327,16 @@ class SettingsViewModel(private val repository: UserPreferencesRepository) : Vie
 
     fun getDictionaryFontPaths(dictId: String): StateFlow<String> {
         return dictionaryFontPathsFlows.getOrPut(dictId) {
-            repository.getDictionaryFontPaths(dictId)
-                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
+            val savedFlow = repository.getDictionaryFontPaths(dictId)
+            val scannedFlow = flow {
+                emit(DictionaryManager.scanForFonts(dictId))
+            }
+
+            combine(savedFlow, scannedFlow) { saved, scanned ->
+                val list = saved.split(",").filter { it.isNotBlank() }.toMutableSet()
+                list.addAll(scanned)
+                list.joinToString(",")
+            }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
         }
     }
 

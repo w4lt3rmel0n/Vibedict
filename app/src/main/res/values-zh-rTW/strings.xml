@@ -47,6 +47,13 @@
     <string name="pref_text_size">文字大小</string>
     <string name="pref_keep_screen_on">螢幕常亮</string>
     <string name="pref_keep_screen_on_subtitle">應用程式開啟時保持螢幕常亮</string>
+    <string name="pref_pinch_mode">雙指縮放</string>
+    <string name="pref_pinch_mode_subtitle">使用整合 HTML 檢視渲染內容支援雙指縮放</string>
+
+    <string name="pref_backup_profile">匯出備份</string>
+    <string name="pref_backup_profile_subtitle">將設定和資料匯出至檔案</string>
+    <string name="pref_restore_profile">匯入備份</string>
+    <string name="pref_restore_profile_subtitle">從備份檔案還原設定和資料</string>
 
     <string name="pref_manage_dicts">管理字典</string>
     <string name="pref_manage_dicts_subtitle">新增或移除字典</string>
@@ -60,7 +67,7 @@
     <string name="add_local_dict">新增本地字典</string>
     <string name="add_web_engine">新增網路搜尋引擎</string>
     <string name="add_ai_prompt">新增 AI 提示詞</string>
-    <string name="manage_folders">管理資料夾</string>
+    <string name="remove_dicts">移除字典</string>
     <string name="done_managing">完成管理</string>
     <string name="linked_folders">已連結資料夾</string>
     <string name="loaded_dictionaries">已載入字典</string>
@@ -103,6 +110,9 @@
     <string name="define">定義</string>
     <string name="fulltext">全文</string>
     <string name="regex">正則</string>
+    <string name="wildcard">萬用字元</string>
+    <string name="wildcard_search">萬用字元搜尋</string>
+    <string name="wildcard_subtitle">在搜尋中啟用萬用字元</string>
 
     <string name="llm_services">LLM 服務</string>
     <string name="add_provider">新增提供者</string>
@@ -170,10 +180,30 @@
     <string name="rename_font_message">輸入新名稱（僅限英數字）。這將變更 CSS font-family。</string>
     <string name="css_content">CSS 內容</string>
     <string name="js_content">JS 內容</string>
-    <string name="warning">Warning</string>
-    <string name="mount_css_warning">This dictionary might already have internal styling. Mounting a custom file might cause conflicts. Do you want to continue?</string>
-    <string name="mount_js_warning">This dictionary might already have internal scripts. Mounting a custom file might cause conflicts. Do you want to continue?</string>
-    <string name="continue_text">Continue</string>
+    <string name="warning">警告</string>
+    <string name="mount_css_warning">此字典可能已有內部樣式。掛載自訂檔案可能會導致衝突。您要繼續嗎？</string>
+    <string name="mount_js_warning">此字典可能已有內部指令碼。掛載自訂檔案可能會導致衝突。您要繼續嗎？</string>
+    <string name="continue_text">繼續</string>
     <string name="view_entries">檢視條目</string>
-    <string name="view_files">檢視檔案 (未實作)</string>
+    <string name="view_files">檢視檔案</string>
+
+    <!-- Backup Categories -->
+    <string name="backup_dict_config">字典設定</string>
+    <string name="backup_ai_prompts">AI 提示詞</string>
+    <string name="backup_web_search">網路搜尋設定</string>
+    <string name="backup_collections">集合</string>
+    <string name="backup_bookmarks">書籤</string>
+
+    <!-- Logs -->
+    <string name="app_logs">應用程式記錄</string>
+    <string name="time_frame">時間範圍</string>
+    <string name="days_format">%d 天</string>
+    <string name="export_log">匯出 .log</string>
+    <string name="share">分享</string>
+    <string name="log_saved">已儲存至 %s</string>
+    <string name="log_save_failed">儲存記錄失敗</string>
+
+    <!-- Misc -->
+    <string name="github">GitHub</string>
+    <string name="report_bug">回報錯誤</string>
 </resources>

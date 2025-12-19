@@ -84,12 +84,24 @@ object WebViewModeRenderer {
             --on-surface: ${themeColors.onSurface};
         }
         
+        @font-face {
+            font-family: 'Roboto Flex';
+            font-style: normal;
+            src: url('https://waltermelon.app/fonts/roboto_flex.ttf');
+        }
+        @font-face {
+            font-family: 'Roboto Flex';
+            font-style: italic;
+            src: url('https://waltermelon.app/fonts/roboto_flex.ttf');
+            font-variation-settings: 'slnt' -10;
+        }
+        
         html {
             zoom: $zoomPercent%;
         }
         
         body {
-            font-family: 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-family: 'Roboto Flex', sans-serif;
             background-color: var(--bg-color);
             color: var(--text-color);
             line-height: 1.5;
