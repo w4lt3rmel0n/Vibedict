@@ -947,13 +947,27 @@ fun DictionaryBodyItem(
                                     val fontList = customFontPaths.split(",").filter { it.isNotBlank() }
                                     val fontFaceDeclarations = fontList.joinToString("\n") { path ->
                                         val fontFileName = path.substringAfterLast('/')
-                                        // Encode the filename for the URL, replacing "+" with "%20" as browsers expect
-                                        val encodedFileName = java.net.URLEncoder.encode(fontFileName, "UTF-8").replace("+", "%20")
                                         val fontFamilyName = fontFileName.substringBeforeLast('.')
+                                        
+                                        // Determine URL based on path type
+                                        // "fonts/" prefix -> Global app font (in filesDir)
+                                        // Otherwise -> Dictionary resource (relative path)
+                                        val url = if (path.startsWith("fonts/")) {
+                                            val encodedFileName = java.net.URLEncoder.encode(fontFileName, "UTF-8").replace("+", "%20")
+                                            "https://waltermelon.app/fonts/$encodedFileName"
+                                        } else {
+                                            // Dictionary resource: Use full relative path
+                                            // Encode each segment to ensure valid URL
+                                            val encodedPath = path.split("/").joinToString("/") { 
+                                                 java.net.URLEncoder.encode(it, "UTF-8").replace("+", "%20")
+                                            }
+                                            "https://waltermelon.app/$encodedPath"
+                                        }
+
                                         """
                                         @font-face {
                                             font-family: '$fontFamilyName';
-                                            src: url('https://waltermelon.app/fonts/$encodedFileName');
+                                            src: url('$url');
                                         }
                                         """
                                     }
