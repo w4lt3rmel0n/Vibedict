@@ -87,12 +87,12 @@ object WebViewModeRenderer {
         @font-face {
             font-family: 'Roboto Flex';
             font-style: normal;
-            src: url('https://waltermelon.app/fonts/roboto_flex.ttf');
+            src: url('https://app.vibedict/fonts/roboto_flex.ttf');
         }
         @font-face {
             font-family: 'Roboto Flex';
             font-style: italic;
-            src: url('https://waltermelon.app/fonts/roboto_flex.ttf');
+            src: url('https://app.vibedict/fonts/roboto_flex.ttf');
             font-variation-settings: 'slnt' -10;
         }
         
@@ -419,7 +419,7 @@ object WebViewModeRenderer {
                 """
                 @font-face {
                     font-family: '$fontFamilyName';
-                    src: url('https://waltermelon.app/fonts/$encodedFileName');
+                    src: url('https://app.vibedict/fonts/$encodedFileName');
                 }
                 """
             }
@@ -430,12 +430,12 @@ object WebViewModeRenderer {
             @font-face {
                 font-family: 'Roboto Flex';
                 font-style: normal;
-                src: url('https://waltermelon.app/fonts/roboto_flex.ttf');
+                src: url('https://app.vibedict/fonts/roboto_flex.ttf');
             }
             @font-face {
                 font-family: 'Roboto Flex';
                 font-style: italic;
-                src: url('https://waltermelon.app/fonts/roboto_flex.ttf');
+                src: url('https://app.vibedict/fonts/roboto_flex.ttf');
                 font-variation-settings: 'slnt' -10;
             }
             body {
@@ -455,7 +455,7 @@ object WebViewModeRenderer {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <base href="https://waltermelon.app/">
+    <base href="https://app.vibedict/">
     <style>$finalCss</style>
 </head>
 <body>
