@@ -20,7 +20,12 @@ An Android dictionary application developed with the assistance of artificial in
 <li>This app is largely built with the help of artificial intelligence.</li>
 
 ##
-<img src="fastlane/metadata/android/en-US/images/phoneScreenshots/1.png" alt="screenshot" style="height: 150px;">
+<p align="center">
+<img src="fastlane/metadata/android/en-US/images/phoneScreenshots/1.png" alt="screenshot" style="height: 500px;"> 
+<img src="fastlane/metadata/android/en-US/images/phoneScreenshots/2.png" alt="screenshot" style="height: 500px;">
+<img src="fastlane/metadata/android/en-US/images/phoneScreenshots/3.png" alt="screenshot" style="height: 500px;">
+<img src="fastlane/metadata/android/en-US/images/phoneScreenshots/4.png" alt="screenshot" style="height: 500px;">
+</p>
 
 ##
 <a href="https://apps.obtainium.imranr.dev/redirect.html?r=obtainium://add/https://github.com/w4lt3rmel0n/Vibedict/">
