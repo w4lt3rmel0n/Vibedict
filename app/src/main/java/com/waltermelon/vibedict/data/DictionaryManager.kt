@@ -2,8 +2,7 @@ package com.waltermelon.vibedict.data
 
 import android.content.Context
 import android.net.Uri
-import android.system.Os
-import android.system.OsConstants
+import android.util.Log
 import androidx.documentfile.provider.DocumentFile
 
 import kotlinx.coroutines.async
@@ -13,9 +12,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
-import java.io.FileDescriptor
-import java.security.MessageDigest
-import android.util.Log
 
 object DictionaryManager {
     val loadedDictionaries = mutableListOf<LoadedDictionary>()
@@ -23,6 +19,7 @@ object DictionaryManager {
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
     var isInitialized = false
+    private var appContext: Context? = null
 
     data class LoadedDictionary(
         val id: String,
@@ -34,49 +31,10 @@ object DictionaryManager {
         val defaultCssContent: String = "",
         val defaultJsContent: String = "",
         val webUrl: String? = null,
-        val aiPrompt: AIPrompt? = null
+        val aiPrompt: AIPrompt? = null,
+        val sourceUri: String? = null
     )
 
-    // --- Helper: Compute partial hash for unique identification ---
-    private fun computeFileHash(fd: FileDescriptor): String {
-        return try {
-            val digest = MessageDigest.getInstance("MD5")
-            val buffer = ByteArray(4096)
-            val fileSize = Os.fstat(fd).st_size
-
-            // 1. Read Header (First 4KB)
-            Os.lseek(fd, 0L, OsConstants.SEEK_SET)
-            var bytesRead = Os.read(fd, buffer, 0, buffer.size)
-            if (bytesRead > 0) digest.update(buffer, 0, bytesRead)
-
-            // 2. Read Middle (4KB from middle)
-            if (fileSize > 8192) {
-                Os.lseek(fd, fileSize / 2, OsConstants.SEEK_SET)
-                bytesRead = Os.read(fd, buffer, 0, buffer.size)
-                if (bytesRead > 0) digest.update(buffer, 0, bytesRead)
-            }
-
-            // 3. Read Footer (Last 4KB)
-            if (fileSize > 4096) {
-                Os.lseek(fd, maxOf(0L, fileSize - 4096), OsConstants.SEEK_SET)
-                bytesRead = Os.read(fd, buffer, 0, buffer.size)
-                if (bytesRead > 0) digest.update(buffer, 0, bytesRead)
-            }
-
-            // 4. Include File Size
-            val sizeBytes = java.nio.ByteBuffer.allocate(8).putLong(fileSize).array()
-            digest.update(sizeBytes)
-
-            // Reset position for MdictEngine
-            Os.lseek(fd, 0L, OsConstants.SEEK_SET)
-
-            // Convert to Hex String
-            digest.digest().joinToString("") { "%02x".format(it) }
-        } catch (e: Exception) {
-            e.printStackTrace()
-            "unknown_hash_${System.currentTimeMillis()}"
-        }
-    }
 
     // --- Helper: Non-Recursive File Listing ---
     private fun listFiles(dir: DocumentFile): List<DocumentFile> {
@@ -99,12 +57,15 @@ object DictionaryManager {
         folderUris: Set<String>,
         webEngines: List<WebSearchEngine> = emptyList(),
         aiPrompts: List<AIPrompt> = emptyList(),
-        llmProviders: List<LLMProvider> = emptyList()
+        llmProviders: List<LLMProvider> = emptyList(),
+        removedIds: Set<String> = emptySet(),
+        restoringFolders: Set<String> = emptySet()
     ) = withContext(Dispatchers.IO) {
         _isLoading.value = true
         try {
             // Load Cache
             DictionaryCacheManager.loadCache(context)
+            appContext = context.applicationContext
 
             // Save providers for later use in lookup
             loadedProviders = llmProviders
@@ -126,7 +87,8 @@ object DictionaryManager {
                         mddEngines = emptyList(),
                         mdxPath = null,
                         mddPaths = emptyList(),
-                        webUrl = engine.url
+                        webUrl = engine.url,
+                        sourceUri = null
                     )
                 )
             }
@@ -141,7 +103,8 @@ object DictionaryManager {
                         mddEngines = emptyList(),
                         mdxPath = null,
                         mddPaths = emptyList(),
-                        aiPrompt = prompt
+                        aiPrompt = prompt,
+                        sourceUri = null
                     )
                 )
             }
@@ -180,57 +143,29 @@ object DictionaryManager {
                                     val mdxFile = files.find { it.name!!.endsWith(".mdx", ignoreCase = true) }
                                     if (mdxFile != null) {
                                         try {
-                                            // --- CACHE CHECK ---
                                             val fileUri = mdxFile.uri.toString()
                                             val fileSize = mdxFile.length()
                                             val lastModified = mdxFile.lastModified()
-                                            val cachedEntry = DictionaryCacheManager.getEntry(fileUri)
+                                            
+                                            // --- NEW: Use Cache Manager for Identity ---
+                                            dictId = DictionaryCacheManager.getOrComputeHash(
+                                                context,
+                                                mdxFile.uri,
+                                                fileSize,
+                                                lastModified,
+                                                baseName
+                                            )
+                                            // -------------------------------------------
 
-                                            if (cachedEntry != null &&
-                                                cachedEntry.size == fileSize &&
-                                                cachedEntry.lastModified == lastModified
-                                            ) {
-                                                // Cache Hit
-                                                dictId = cachedEntry.hash
-                                                val pfd = context.contentResolver.openFileDescriptor(mdxFile.uri, "r")
-                                                if (pfd != null) {
-                                                    val fdInt = pfd.detachFd()
-                                                    val engine = MdictEngine()
-                                                    if (engine.loadDictionaryFd(fdInt, false)) {
-                                                        mdxEngine = engine
-                                                        mdxPath = fileUri
-                                                    } else {
-                                                        engine.close()
-                                                    }
-                                                }
-                                            } else {
-                                                // Cache Miss
-                                                val pfd = context.contentResolver.openFileDescriptor(mdxFile.uri, "r")
-                                                if (pfd != null) {
-                                                    // --- COMPUTE HASH ---
-                                                    val fdObj = pfd.fileDescriptor
-                                                    dictId = computeFileHash(fdObj)
-                                                    // --------------------
-
-                                                    // Update Cache
-                                                    DictionaryCacheManager.putEntry(
-                                                        DictionaryCacheManager.CacheEntry(
-                                                            uri = fileUri,
-                                                            size = fileSize,
-                                                            lastModified = lastModified,
-                                                            hash = dictId,
-                                                            name = baseName
-                                                        )
-                                                    )
-
-                                                    val fdInt = pfd.detachFd()
-                                                    val engine = MdictEngine()
-                                                    if (engine.loadDictionaryFd(fdInt, false)) {
-                                                        mdxEngine = engine
-                                                        mdxPath = fileUri
-                                                    } else {
-                                                        engine.close()
-                                                    }
+                                            val pfd = context.contentResolver.openFileDescriptor(mdxFile.uri, "r")
+                                            if (pfd != null) {
+                                                val fdInt = pfd.detachFd()
+                                                val engine = MdictEngine()
+                                                if (engine.loadDictionaryFd(fdInt, false)) {
+                                                    mdxEngine = engine
+                                                    mdxPath = fileUri
+                                                } else {
+                                                    engine.close()
                                                 }
                                             }
                                         } catch (e: Exception) { e.printStackTrace() }
@@ -280,16 +215,34 @@ object DictionaryManager {
                                             dictId = mddFiles.firstOrNull()?.uri.toString() ?: "unknown_${System.currentTimeMillis()}"
                                         }
 
-                                        LoadedDictionary(
-                                            id = dictId,
-                                            name = baseName,
-                                            mdxEngine = mdxEngine,
-                                            mddEngines = mddEngines,
-                                            mdxPath = mdxPath,
-                                            mddPaths = mddPaths,
-                                            defaultCssContent = cssContent,
-                                            defaultJsContent = jsContent
-                                        )
+                                        // --- NEW: Filter Excluded Dictionaries ---
+                                        val mdxPathStr = mdxPath ?: ""
+                                        // Check if this dictionary belongs to a folder being explicitly restored
+                                        val isRestoring = restoringFolders.any { folder -> 
+                                            // Check against MDX path or MDD paths
+                                            (mdxPathStr.isNotEmpty() && mdxPathStr.startsWith(folder)) ||
+                                            mddPaths.any { it.startsWith(folder) }
+                                        }
+
+                                        if (!isRestoring && dictId in removedIds) {
+                                            // Skip loading this dictionary
+                                            mdxEngine?.close()
+                                            mddEngines.forEach { it.close() }
+                                            null
+                                        } else {
+                                            LoadedDictionary(
+                                                id = dictId,
+                                                name = baseName,
+                                                mdxEngine = mdxEngine,
+                                                mddEngines = mddEngines,
+                                                mdxPath = mdxPath,
+                                                mddPaths = mddPaths,
+                                                defaultCssContent = cssContent,
+                                                defaultJsContent = jsContent,
+                                                sourceUri = uriString
+                                            )
+                                        }
+                                        // -----------------------------------------
                                     } else {
                                         null
                                     }
@@ -348,7 +301,8 @@ object DictionaryManager {
                     mddEngines = emptyList(),
                     mdxPath = null,
                     mddPaths = emptyList(),
-                    webUrl = engine.url
+                    webUrl = engine.url,
+                    sourceUri = null
                 )
             )
         }
@@ -365,7 +319,8 @@ object DictionaryManager {
                     mddEngines = emptyList(),
                     mdxPath = null,
                     mddPaths = emptyList(),
-                    aiPrompt = prompt
+                    aiPrompt = prompt,
+                    sourceUri = null
                 )
             )
         }
@@ -496,6 +451,7 @@ object DictionaryManager {
 
         val dictSnapshot = loadedDictionaries.toList()
 
+        // 1. Try MDD engines first (fastest)
         for (v in variations) {
             for (dict in dictSnapshot) {
                 dict.mddEngines.forEach { engine ->
@@ -510,7 +466,60 @@ object DictionaryManager {
                 }
             }
         }
+
+        // 2. Fallback to local file system for extracted dictionaries
+        // This is slower, so we do it after checking all MDDs
+        for (dict in dictSnapshot) {
+            if (dict.mddEngines.isEmpty() && dict.sourceUri != null) {
+                // Try to find the file in the source folder
+                // Use the raw key (normalized)
+                val normalizedPath = key.replace("\\", "/").trimStart('/')
+                val file = findFileInTree(Uri.parse(dict.sourceUri), normalizedPath)
+                if (file != null) {
+                     return readDocumentFile(file)
+                }
+            }
+        }
+
         return null
+    }
+
+    // --- NEW: Helper for file lookup in TreeUri ---
+    private fun findFileInTree(treeUri: Uri, path: String): DocumentFile? {
+        val context = appContext ?: return null
+        var current = DocumentFile.fromTreeUri(context, treeUri) ?: return null
+        if (path.isEmpty()) return null
+
+        val parts = path.split("/")
+        for (i in 0 until parts.size) {
+            val part = parts[i]
+            if (part == "." || part.isEmpty()) continue
+
+            // optimization: check if we can skip listing? No, findFile does list.
+            val next = current.findFile(part) ?: return null
+            
+            if (i == parts.size - 1) {
+                return if (next.isFile) next else null
+            } else {
+                if (next.isDirectory) {
+                    current = next
+                } else {
+                    return null
+                }
+            }
+        }
+        return null
+    }
+
+    private fun readDocumentFile(file: DocumentFile): ByteArray? {
+        return try {
+            appContext?.contentResolver?.openInputStream(file.uri)?.use { 
+                it.readBytes()
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
     }
 
     // --- NEW: Scoped Resource Lookup ---
@@ -537,6 +546,16 @@ object DictionaryManager {
                 }
             }
         }
+
+        // Fallback to local file system for extracted dictionaries
+        if (dict.mddEngines.isEmpty() && dict.sourceUri != null) {
+            val normalizedPath = key.replace("\\", "/").trimStart('/')
+            val file = findFileInTree(Uri.parse(dict.sourceUri), normalizedPath)
+            if (file != null) {
+                return readDocumentFile(file)
+            }
+        }
+
         return null
     }
 
@@ -727,5 +746,43 @@ object DictionaryManager {
             }
         }
         onProgress(1.0f, "Done")
+    }
+
+    // --- NEW: Scan for Fonts in Extracted Dictionary ---
+    suspend fun scanForFonts(dictId: String): List<String> = withContext(Dispatchers.IO) {
+        val dict = getDictionaryById(dictId) ?: return@withContext emptyList()
+        if (dict.sourceUri == null) return@withContext emptyList()
+        
+        val fonts = mutableListOf<String>()
+        val rootDir = DocumentFile.fromTreeUri(appContext ?: return@withContext emptyList(), Uri.parse(dict.sourceUri)) ?: return@withContext emptyList()
+
+        // Recursive scan with depth limit to avoid performance issues
+        fun scan(dir: DocumentFile, relativePath: String, depth: Int) {
+            if (depth > 4) return // Limit depth
+
+            val files = dir.listFiles()
+            for (file in files) {
+                if (file.isDirectory) {
+                    val name = file.name ?: continue
+                    if (!name.startsWith(".")) {
+                        scan(file, if (relativePath.isEmpty()) name else "$relativePath/$name", depth + 1)
+                    }
+                } else {
+                    val name = file.name ?: continue
+                    val ext = name.substringAfterLast('.', "").lowercase()
+                    if (ext in setOf("ttf", "otf", "woff", "woff2")) {
+                        fonts.add(if (relativePath.isEmpty()) name else "$relativePath/$name")
+                    }
+                }
+            }
+        }
+
+        try {
+            scan(rootDir, "", 0)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        
+        return@withContext fonts
     }
 }
