@@ -1,0 +1,1 @@
+A versatile dictionary application supporting MDict formats and more.

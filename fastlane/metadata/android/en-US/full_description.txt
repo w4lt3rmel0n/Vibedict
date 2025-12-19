@@ -1,0 +1,8 @@
+Vibedict is a powerful dictionary app designed to view dictionaries in MDict formats seamlessly.
+
+Features:
+- Support for MDX/MDD dictionary files.
+- Support for web search and online dictionaries.
+- Support for custom stylesheet and fonts.
+- Clean and modern user interface built upon Material You.
+- Customizable settings for extracting and managing dictionaries.
