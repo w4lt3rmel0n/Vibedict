@@ -23,7 +23,7 @@
     <string name="go_back">返回</string>
     <string name="history">历史记录</string>
     <string name="clear_all">清除所有</string>
-    <string name="no_history">暂无搜索记录。</string>
+    <string name="no_history">暂无查询记录。</string>
     <string name="no_def_found_collection">在选定的集合中未找到该定义。</string>
 
     <string name="no_bookmarks">您还没有收藏任何单词。</string>
@@ -43,11 +43,13 @@
     <string name="pref_dark_mode">深色模式</string>
     <string name="pref_material_colour">质感色彩</string>
     <string name="pref_material_subtitle">跟随系统配色方案</string>
-    <string name="pref_instant_search">即时搜索</string>
+    <string name="pref_instant_search">开启即查词</string>
     <string name="pref_instant_search_subtitle">进入应用时键盘自动弹出</string>
     <string name="pref_text_size">文字大小</string>
     <string name="pref_keep_screen_on">屏幕常亮</string>
     <string name="pref_keep_screen_on_subtitle">应用开启时保持屏幕常亮</string>
+    <string name="pref_pinch_mode">双指缩放</string>
+    <string name="pref_pinch_mode_subtitle">在同一张页面上渲染全部内容，支持双指缩放</string>
 
     <string name="pref_manage_dicts">管理词典</string>
     <string name="pref_manage_dicts_subtitle">添加或移除词典</string>
@@ -61,7 +63,7 @@
     <string name="add_local_dict">添加本地词典</string>
     <string name="add_web_engine">添加网络搜索引擎</string>
     <string name="add_ai_prompt">添加 AI 提示词</string>
-    <string name="manage_folders">管理文件夹</string>
+    <string name="remove_dicts">移除词典</string>
     <string name="done_managing">完成管理</string>
     <string name="linked_folders">已链接文件夹</string>
     <string name="loaded_dictionaries">已加载词典</string>
@@ -167,11 +169,40 @@
     <string name="unsaved_changes_message">是否保存这些更改？</string>
     <string name="dont_save">不保存</string>
     <string name="rename_font">重命名字体</string>
-    <string name="rename_font_message">Enter a new name (alphanumeric only). This will change the CSS font-family.</string>
+    <string name="rename_font_message">输入新名称（仅限字母数字）。这将更改 CSS font-family。</string>
     <string name="css_content">CSS 内容</string>
     <string name="js_content">JS 内容</string>
     <string name="warning">注意</string>
     <string name="mount_css_warning">如果词典匹配的mdd已经包含css文件，添加额外的css文件可能导致一些显示问题，确定要继续吗？</string>
     <string name="mount_js_warning">如果词典匹配的mdd已经包含js文件，添加额外的js文件可能导致一些显示问题，确定要继续吗？</string>
     <string name="continue_text">继续</string>
+    <string name="view_entries">查看词条</string>
+    <string name="view_files">查看文件</string>
+    <string name="wildcard">通配符</string>
+    <string name="wildcard_search">通配符搜索</string>
+    <string name="wildcard_subtitle">在搜索中启用通配符</string>
+
+    <!-- Backup Categories -->
+    <string name="backup_dict_config">词典配置</string>
+    <string name="backup_ai_prompts">AI 提示词</string>
+    <string name="backup_web_search">网络搜索配置</string>
+    <string name="backup_collections">集合</string>
+    <string name="backup_bookmarks">书签</string>
+
+    <!-- Logs -->
+    <string name="app_logs">应用日志</string>
+    <string name="time_frame">时间范围</string>
+    <string name="days_format">%d 天</string>
+    <string name="export_log">导出 .log</string>
+    <string name="share">发送到</string>
+    <string name="log_saved">已保存至 %s</string>
+    <string name="log_save_failed">保存日志失败</string>
+
+    <!-- Misc -->
+    <string name="github">GitHub</string>
+    <string name="report_bug">报告错误</string>
+    <string name="pref_backup_profile">导出备份</string>
+    <string name="pref_backup_profile_subtitle">导出配置和数据到文件</string>
+    <string name="pref_restore_profile">导入备份</string>
+    <string name="pref_restore_profile_subtitle">从备份文件恢复配置和数据</string>
 </resources>
