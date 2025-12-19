@@ -267,6 +267,7 @@ fun DefScreen(
                                     setBackgroundColor(if (isDarkTheme) 0xFF121212.toInt() else 0xFFFFFFFF.toInt())
                                     
                                     webViewClient = object : WebViewClient() {
+                                        @android.annotation.SuppressLint("ResourceType")
                                         override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {
                                             val url = request?.url?.toString() ?: ""
                                             if (url.startsWith("https://waltermelon.app/")) {
@@ -759,6 +760,7 @@ fun DictionaryBodyItem(
 
                             webViewClient = object : WebViewClient() {
 
+                                @android.annotation.SuppressLint("ResourceType")
                                 override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {
                                     val url = request?.url?.toString() ?: ""
                                     if (url.startsWith("https://waltermelon.app/")) {
