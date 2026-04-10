@@ -20,7 +20,7 @@ object Screen {
     const val AI_PROMPT_CONFIG = "ai_prompt_config/{promptId}"
 
     fun createCollectionDetailRoute(id: String) = "collection_detail/$id"
-    fun createRouteForWord(word: String) = "word_result/$word"
+    fun createRouteForWord(word: String) = "word_result/${java.net.URLEncoder.encode(word, java.nio.charset.StandardCharsets.UTF_8.toString())}"
     fun createDictionaryDetailRoute(id: String) = "dictionary_detail/$id"
 
     const val ENTRY_LIST = "entry_list/{dictId}"
