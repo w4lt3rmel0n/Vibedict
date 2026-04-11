@@ -287,6 +287,16 @@ fun DefScreen(
                                                 android.util.Log.d("MdictJNI", "WebView Request Intercepted: $url")
                                             }
                                             
+                                            if (url.startsWith("https://app.vibedict/entry_html?id=")) {
+                                                val id = android.net.Uri.parse(url).getQueryParameter("id")
+                                                if (id != null) {
+                                                    val html = com.waltermelon.vibedict.ui.wordresults.WebViewModeRenderer.IframeCache.cache[id]
+                                                    if (html != null) {
+                                                        return WebResourceResponse("text/html", "UTF-8", java.io.ByteArrayInputStream(html.toByteArray()))
+                                                    }
+                                                }
+                                            }
+                                            
                                             // Serve local fonts
                                             if (url.startsWith("https://app.vibedict/fonts/")) {
                                                 val requestedFileNameEncoded = url.substringAfter("https://app.vibedict/fonts/")
@@ -318,7 +328,7 @@ fun DefScreen(
                                             // Serve MDD resources - need to determine which dict this is for
                                             var resourceKey = ""
                                             if (url.startsWith("https://app.vibedict/")) {
-                                                if (url != "https://app.vibedict/") {
+                                                if (url != "https://app.vibedict/" && !url.startsWith("https://app.vibedict/entry_html")) {
                                                     resourceKey = url.substringAfter("https://app.vibedict/")
                                                 }
                                             }

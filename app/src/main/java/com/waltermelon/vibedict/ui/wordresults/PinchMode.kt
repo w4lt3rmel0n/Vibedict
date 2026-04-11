@@ -101,6 +101,7 @@ object WebViewModeRenderer {
         
         html {
             zoom: $zoomPercent%;
+            scroll-padding-top: 60px;
         }
         
         body {
@@ -389,10 +390,17 @@ object WebViewModeRenderer {
             $pillsHtml
             <div id="body-$entryId" class="entry-body $expandedClass">
                 $loadingHtml
-                ${if (!entry.isLoading) """<iframe class="entry-iframe" scrolling="no" sandbox="allow-scripts allow-same-origin" srcdoc="${escapeHtmlAttribute(iframeContent)}"></iframe>""" else ""}
+                ${if (!entry.isLoading) {
+                    IframeCache.cache[entry.id] = iframeContent
+                    """<iframe class="entry-iframe" scrolling="no" sandbox="allow-scripts allow-same-origin" src="https://app.vibedict/entry_html?id=${android.net.Uri.encode(entry.id)}"></iframe>"""
+                } else ""}
             </div>
         </div>
         """.trimIndent()
+    }
+
+    object IframeCache {
+        val cache = java.util.concurrent.ConcurrentHashMap<String, String>()
     }
 
     /**
@@ -407,16 +415,25 @@ object WebViewModeRenderer {
         forceOriginalStyle: Boolean,
         dictId: String
     ): String {
-        val iframeOverflowCss = """
-            html, body {
-                overflow: hidden !important;
-                overflow-x: hidden !important;
-                overflow-y: hidden !important;
-                height: auto !important;
-                min-height: 0 !important;
-                max-height: none !important;
-            }
-        """.trimIndent()
+        val iframeOverflowCss = """"
+    html, body {
+        overflow: hidden !important;
+        overflow-x: hidden !important;
+        height: auto !important;
+        min-height: 0 !important;
+        max-height: none !important;
+    }
+    
+    /* Override the clipping negative margin from style.css */
+    ls[w], ls {
+        margin-left: 0 !important;
+    }
+    
+    /* Optional: Add a tiny bit of padding to the iframe body so text doesn't touch the absolute edge */
+    body {
+        padding: 0 4px !important;
+    }
+""".trimIndent()
 
         val transparencyCss = "html, body { background-color: transparent !important; }"
 
@@ -472,7 +489,6 @@ object WebViewModeRenderer {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <base href="https://app.vibedict/">
     <style>$finalCss</style>
 </head>
 <body>
@@ -494,6 +510,16 @@ object WebViewModeRenderer {
         // Track link clicks for debugging redirection
         document.addEventListener('click', function(e) {
             var target = e.target.closest('a');
+            
+            // Add comprehensive logging out here to see what we caught
+            if (target) {
+                console.log('Iframe link clicked. target.href: ' + target.href);
+                console.log('Iframe link clicked. target.getAttribute("href"): ' + target.getAttribute('href'));
+                try {
+                    console.log('Iframe link clicked. innerText: ' + target.innerText);
+                } catch(e) {}
+            }
+            
             if (target && target.href) {
                 var clickedUrl = target.href;
                 console.log('Iframe link clicked, attempting to redirect to: ' + clickedUrl);
