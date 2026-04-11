@@ -408,6 +408,18 @@ fun DefScreen(
                                             if (entryWord != null) {
                                                 try {
                                                     val decoded = java.net.URLDecoder.decode(entryWord, "UTF-8")
+                                                    if (decoded.startsWith("#")) {
+                                                        val hash = decoded.substring(1)
+                                                        view?.evaluateJavascript("""
+                                                            (function() {
+                                                                var iframes = document.getElementsByClassName('entry-iframe');
+                                                                for (var i=0; i<iframes.length; i++) {
+                                                                    iframes[i].contentWindow.postMessage({type: 'scrollTo', hash: '$hash'}, '*');
+                                                                }
+                                                            })();
+                                                        """.trimIndent(), null)
+                                                        return true
+                                                    }
                                                     navController.navigate(Screen.createRouteForWord(decoded))
                                                 } catch (e: Exception) {
                                                     e.printStackTrace()
@@ -935,6 +947,19 @@ fun DictionaryBodyItem(
                                     if (entryWord != null) {
                                         try {
                                             val decoded = java.net.URLDecoder.decode(entryWord, "UTF-8")
+                                            if (decoded.startsWith("#")) {
+                                                val hash = decoded.substring(1)
+                                                view?.evaluateJavascript("""
+                                                    (function() {
+                                                        var el = document.getElementById('$hash') || document.getElementsByName('$hash')[0];
+                                                        if (!el) {
+                                                            try { el = document.querySelector('[id="'+'$hash'.replace(/"/g, '\\"')+'"]'); } catch(e){}
+                                                        }
+                                                        if (el) el.scrollIntoView();
+                                                    })();
+                                                """.trimIndent(), null)
+                                                return true
+                                            }
                                             navController.navigate(Screen.createRouteForWord(decoded))
                                         } catch (e: Exception) {
                                             e.printStackTrace()

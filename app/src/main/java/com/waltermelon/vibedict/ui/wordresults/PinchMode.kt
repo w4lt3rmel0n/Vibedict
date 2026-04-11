@@ -507,6 +507,17 @@ object WebViewModeRenderer {
             parent.postMessage({type: 'iframeSelection', text: text}, '*');
         });
         
+        window.addEventListener('message', function(e) {
+            if (e.data && e.data.type === 'scrollTo') {
+                var hashId = e.data.hash;
+                var el = document.getElementById(hashId) || document.getElementsByName(hashId)[0];
+                if (!el) {
+                    try { el = document.querySelector('[id="' + hashId.replace(/"/g, '\\"') + '"]'); } catch(err) {}
+                }
+                if (el) el.scrollIntoView();
+            }
+        });
+        
         // Track link clicks for debugging redirection
         document.addEventListener('click', function(e) {
             var target = e.target.closest('a');
@@ -533,6 +544,17 @@ object WebViewModeRenderer {
                     if (clickedUrl.startsWith('entry://')) {
                         var word = clickedUrl.substring(8);
                         try { word = decodeURIComponent(word); } catch(err) {}
+                        
+                        if (word.startsWith('#')) {
+                            var hashId = word.substring(1);
+                            var el = document.getElementById(hashId) || document.getElementsByName(hashId)[0];
+                            if (!el) {
+                                try { el = document.querySelector('[id="' + hashId.replace(/"/g, '\\"') + '"]'); } catch(e) {}
+                            }
+                            if (el) el.scrollIntoView();
+                            return;
+                        }
+                        
                         finalUrl = 'entry://' + encodeURIComponent(word).replace(/['()~*!]/g, function(c) {
                             return '%' + c.charCodeAt(0).toString(16).toUpperCase();
                         });
