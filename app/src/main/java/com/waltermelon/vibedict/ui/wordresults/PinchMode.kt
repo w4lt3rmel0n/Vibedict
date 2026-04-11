@@ -101,7 +101,7 @@ object WebViewModeRenderer {
         
         html {
             zoom: $zoomPercent%;
-            scroll-padding-top: 60px;
+            scroll-padding-top: 50px;
         }
         
         body {
