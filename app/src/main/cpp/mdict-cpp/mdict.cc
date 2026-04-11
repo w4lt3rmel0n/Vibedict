@@ -2289,12 +2289,11 @@ namespace mdict {
     }
 
     std::vector<std::string> Mdict::fulltext_search(const std::string query, std::function<void(float)> progress_callback) {
-        std::vector<std::string> suggestions;
+        std::map<std::string, int> hit_counts;
         std::wstring wquery = utf8_to_wstring(query);
         // Lowercase the query for case-insensitive check
         std::transform(wquery.begin(), wquery.end(), wquery.begin(), ::towlower);
 
-        const size_t max_suggestions = 50;
         size_t blocks_checked = 0;
         size_t total_blocks = this->record_header.size();
 
@@ -2324,11 +2323,14 @@ namespace mdict {
                     // transform is in-place.
                     std::transform(wdef.begin(), wdef.end(), wdef.begin(), ::towlower);
 
-                    if (wdef.find(wquery) != std::wstring::npos) {
-                        suggestions.push_back(entry.first);
-                        if (suggestions.size() >= max_suggestions) {
-                            return suggestions;
-                        }
+                    size_t pos = 0;
+                    int count = 0;
+                    while ((pos = wdef.find(wquery, pos)) != std::wstring::npos) {
+                        count++;
+                        pos += wquery.length();
+                    }
+                    if (count > 0) {
+                        hit_counts[entry.first] += count;
                     }
                 }
                 blocks_checked++;
@@ -2342,7 +2344,25 @@ namespace mdict {
             }
         }
         
-        LOGD("Full-text search checked %zu blocks, found %zu results", blocks_checked, suggestions.size());
+        // After searching all, sort by hit_counts
+        std::vector<std::pair<int, std::string>> sorted_hits;
+        for (const auto& kv : hit_counts) {
+            sorted_hits.push_back({kv.second, kv.first});
+        }
+        std::sort(sorted_hits.rbegin(), sorted_hits.rend()); // descending
+
+        const size_t max_suggestions = 50;
+        std::vector<std::string> suggestions;
+        for (size_t i = 0; i < sorted_hits.size() && i < max_suggestions; ++i) {
+            int count = sorted_hits[i].first;
+            // Limit duplicate pushing to prevent huge arrays in JNI, say max 500 per word
+            if (count > 500) count = 500;
+            for (int j = 0; j < count; ++j) {
+                suggestions.push_back(sorted_hits[i].second);
+            }
+        }
+
+        LOGD("Full-text search checked %zu blocks, found %zu unique results", blocks_checked, sorted_hits.size());
         return suggestions;
     }
 

@@ -370,7 +370,17 @@ fun SuggestionList(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(suggestion.word, style = MaterialTheme.typography.titleLarge)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(suggestion.word, style = MaterialTheme.typography.titleLarge)
+                        if (suggestion.hitCount > 0) {
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "(${suggestion.hitCount})",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
 
                     // --- NEW: FlowRow for dictionary "pills" ---
                     Spacer(modifier = Modifier.height(4.dp))

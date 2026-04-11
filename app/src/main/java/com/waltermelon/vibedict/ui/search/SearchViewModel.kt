@@ -13,7 +13,7 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
 // Data model for merged results
-data class MergedSearchResult(val word: String, val sources: List<String>)
+data class MergedSearchResult(val word: String, val sources: List<String>, val hitCount: Int = 0)
 
 @OptIn(FlowPreview::class)
 class SearchViewModel(private val repository: UserPreferencesRepository) : ViewModel() {
@@ -171,7 +171,7 @@ class SearchViewModel(private val repository: UserPreferencesRepository) : ViewM
                     }
                 }.distinct()
 
-                MergedSearchResult(word, displayNames)
+                MergedSearchResult(word, displayNames, dictIds.size)
             }
 
             var results = finalResults
@@ -187,7 +187,7 @@ class SearchViewModel(private val repository: UserPreferencesRepository) : ViewM
                         else -> 2 // Other matches
                     }
                 }
-                .thenByDescending { it.sources.size } // Frequency: More sources = higher relevance
+                .thenByDescending { it.hitCount } // Frequency: More hits = higher relevance
                 .thenBy { it.word.length }            // Length: Shorter = likely more relevant/concise
                 .thenBy { it.word.lowercase() })      // Alphabetical tie-breaker
             }
