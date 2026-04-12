@@ -12,7 +12,7 @@ android {
         applicationId = "com.waltermelon.vibedict"
         minSdk = 24
         targetSdk = 36
-        versionCode = 14
+        versionCode = 14-f
         versionName = "0.7.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
