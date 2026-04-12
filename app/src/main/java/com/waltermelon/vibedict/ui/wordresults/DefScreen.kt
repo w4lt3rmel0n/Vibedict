@@ -109,7 +109,12 @@ fun DefScreen(
     var findQuery by remember { mutableStateOf("") }
     var findNavEvent by remember { mutableStateOf<FindNavEvent?>(null) }
     val searchFocusRequester = remember { FocusRequester() }
+    var activeMatchOrdinal by remember { mutableStateOf(0) }
+    var numberOfMatches by remember { mutableStateOf(0) }
     // -------------------------------
+
+    // Track nav events for WebView mode
+    var webViewModeLastNavTimestamp by remember { mutableStateOf<Long?>(null) }
 
     val expandedStates = remember { mutableStateMapOf<String, Boolean>() }
     // --- NEW: Track selected index for each dictionary ---
@@ -137,7 +142,8 @@ fun DefScreen(
                     },
                     onNext = { findNavEvent = FindNavEvent(true) },
                     onPrev = { findNavEvent = FindNavEvent(false) },
-                    focusRequester = searchFocusRequester
+                    focusRequester = searchFocusRequester,
+                    matchStatus = if (numberOfMatches > 0) "${activeMatchOrdinal + 1}/$numberOfMatches" else ""
                 )
             } else {
                 TopAppBar(
@@ -262,9 +268,16 @@ fun DefScreen(
                                     settings.builtInZoomControls = true
                                     settings.displayZoomControls = false
                                     settings.setSupportZoom(true)
+                                    settings.displayZoomControls = false
+                                    settings.setSupportZoom(true)
                                     settings.useWideViewPort = true
                                     settings.loadWithOverviewMode = true
                                     setBackgroundColor(if (isDarkTheme) 0xFF121212.toInt() else 0xFFFFFFFF.toInt())
+                                    
+                                    setFindListener { activeMatch, numberOfMatches1, isDoneCounting ->
+                                        activeMatchOrdinal = activeMatch
+                                        numberOfMatches = numberOfMatches1
+                                    }
                                     
                                     webViewClient = object : WebViewClient() {
                                         @android.annotation.SuppressLint("ResourceType")
@@ -272,6 +285,16 @@ fun DefScreen(
                                             val url = request?.url?.toString() ?: ""
                                             if (url.startsWith("https://app.vibedict/")) {
                                                 android.util.Log.d("MdictJNI", "WebView Request Intercepted: $url")
+                                            }
+                                            
+                                            if (url.startsWith("https://app.vibedict/entry_html?id=")) {
+                                                val id = android.net.Uri.parse(url).getQueryParameter("id")
+                                                if (id != null) {
+                                                    val html = com.waltermelon.vibedict.ui.wordresults.WebViewModeRenderer.IframeCache.cache[id]
+                                                    if (html != null) {
+                                                        return WebResourceResponse("text/html", "UTF-8", java.io.ByteArrayInputStream(html.toByteArray()))
+                                                    }
+                                                }
                                             }
                                             
                                             // Serve local fonts
@@ -305,7 +328,7 @@ fun DefScreen(
                                             // Serve MDD resources - need to determine which dict this is for
                                             var resourceKey = ""
                                             if (url.startsWith("https://app.vibedict/")) {
-                                                if (url != "https://app.vibedict/") {
+                                                if (url != "https://app.vibedict/" && !url.startsWith("https://app.vibedict/entry_html")) {
                                                     resourceKey = url.substringAfter("https://app.vibedict/")
                                                 }
                                             }
@@ -340,12 +363,12 @@ fun DefScreen(
                                         
                                         override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                                             val url = request?.url?.toString() ?: ""
-                                            
+
                                             // Handle entry selection
                                             if (url.startsWith("vibedict://selectEntry/")) {
                                                 val parts = url.removePrefix("vibedict://selectEntry/").split("/")
                                                 if (parts.size == 2) {
-                                                    val entryId = parts[0]
+                                                    val entryId = java.net.URLDecoder.decode(parts[0], "UTF-8")
                                                     val index = parts[1].toIntOrNull() ?: 0
                                                     selectedIndices[entryId] = index
                                                 }
@@ -409,13 +432,35 @@ fun DefScreen(
                                     themeColors = themeColors
                                 )
                                 
-                                webView.loadDataWithBaseURL(
-                                    "https://app.vibedict/",
-                                    html,
-                                    "text/html",
-                                    "UTF-8",
-                                    null
-                                )
+                                // Prevent unnecessary reloads if HTML hasn't changed (e.g. during Find in Page)
+                                val lastHtml = webView.getTag(R.id.webview_last_html_tag) as? String
+                                if (html != lastHtml) {
+                                    webView.loadDataWithBaseURL(
+                                        "https://app.vibedict/",
+                                        html,
+                                        "text/html",
+                                        "UTF-8",
+                                        null
+                                    )
+                                    webView.setTag(R.id.webview_last_html_tag, html)
+                                }
+
+                                // --- Find in Page Logic ---
+                                val lastQuery = webView.getTag(R.id.webview_search_query_tag) as? String
+                                if (findQuery != lastQuery) {
+                                    if (findQuery.isNotEmpty()) {
+                                        webView.findAllAsync(findQuery)
+                                    } else {
+                                        webView.clearMatches()
+                                    }
+                                    webView.setTag(R.id.webview_search_query_tag, findQuery)
+                                }
+
+                                val currentNavEvent = findNavEvent
+                                if (currentNavEvent != null && currentNavEvent.timestamp != webViewModeLastNavTimestamp) {
+                                    webView.findNext(currentNavEvent.forward)
+                                    webViewModeLastNavTimestamp = currentNavEvent.timestamp
+                                }
                             },
                             modifier = Modifier.fillMaxSize()
                         )
@@ -505,7 +550,7 @@ fun DefScreen(
                                         // --- NEW: Observe live font paths to handle updates immediately ---
                                         val dynamicFontPaths by viewModel.getFontPaths(entry.id).collectAsState(initial = entry.customFontPaths)
 
-                                        // Select content based on index, safe guard against OOB
+                                        // Select content based on index, safeguard against OOB
                                         val contentToShow = if (entry.entries.isNotEmpty()) {
                                             entry.entries.getOrElse(selectedIndex) { entry.entries[0] }
                                         } else {
@@ -521,7 +566,14 @@ fun DefScreen(
                                             isVisible = isExpanded,
                                             forceOriginalStyle = entry.forceOriginalStyle,
                                             customFontPaths = dynamicFontPaths, // --- CHANGED to live flow ---
+                                            findQuery = findQuery, // --- NEW: Pass find query ---
                                             findNavEvent = findNavEvent,
+                                            onFindResult = { active, total -> // --- NEW ---
+                                                if (isExpanded) { // Only update if visible to avoid noise from hidden entries
+                                                    activeMatchOrdinal = active
+                                                    numberOfMatches = total
+                                                }
+                                            },
                                             isLoading = entry.isLoading,
                                             displayScale = displayScale // --- NEW ---
                                         )
@@ -545,7 +597,8 @@ fun FindInPageBar(
     onClose: () -> Unit,
     onNext: () -> Unit,
     onPrev: () -> Unit,
-    focusRequester: FocusRequester
+    focusRequester: FocusRequester,
+    matchStatus: String = ""
 ) {
     Surface(
         shadowElevation = 4.dp,
@@ -582,6 +635,14 @@ fun FindInPageBar(
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                 keyboardActions = KeyboardActions(onNext = { onNext() })
             )
+            
+            if (matchStatus.isNotEmpty()) {
+                Text(
+                    text = matchStatus,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(horizontal = 8.dp)
+                )
+            }
 
             IconButton(onClick = onPrev) {
                 Icon(Icons.Outlined.KeyboardArrowUp, stringResource(R.string.previous))
@@ -636,7 +697,7 @@ fun DictionaryHeaderItem(
                     modifier = Modifier.rotate(if (isExpanded) 180f else 0f)
                 )
             }
-            
+
             // --- ENTRY SELECTION PILLS ---
             if (entryCount > 1 && isExpanded) {
                 FlowRow(
@@ -651,7 +712,7 @@ fun DictionaryHeaderItem(
                         val color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent
                         val textColor = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
                         val border = if (isSelected) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
-                        
+
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(8.dp))
@@ -693,6 +754,7 @@ fun DictionaryBodyItem(
     customFontPaths: String = "",
     findQuery: String = "",
     findNavEvent: FindNavEvent? = null,
+    onFindResult: (Int, Int) -> Unit = { _, _ -> }, // --- NEW ---
     isLoading: Boolean = false, // --- NEW ---
     displayScale: Float = 0.5f // --- NEW ---
 ) {
@@ -757,6 +819,10 @@ fun DictionaryBodyItem(
                             isVerticalScrollBarEnabled = false
                             isNestedScrollingEnabled = false
                             overScrollMode = android.view.View.OVER_SCROLL_NEVER
+
+                            setFindListener { activeMatch, numberOfMatches1, isDoneCounting ->
+                                onFindResult(activeMatch, numberOfMatches1)
+                            }
 
                             webViewClient = object : WebViewClient() {
 
@@ -950,7 +1016,7 @@ fun DictionaryBodyItem(
                                     val fontFaceDeclarations = fontList.joinToString("\n") { path ->
                                         val fontFileName = path.substringAfterLast('/')
                                         val fontFamilyName = fontFileName.substringBeforeLast('.')
-                                        
+
                                         // Determine URL based on path type
                                         // "fonts/" prefix -> Global app font (in filesDir)
                                         // Otherwise -> Dictionary resource (relative path)
@@ -960,7 +1026,7 @@ fun DictionaryBodyItem(
                                         } else {
                                             // Dictionary resource: Use full relative path
                                             // Encode each segment to ensure valid URL
-                                            val encodedPath = path.split("/").joinToString("/") { 
+                                            val encodedPath = path.split("/").joinToString("/") {
                                                  java.net.URLEncoder.encode(it, "UTF-8").replace("+", "%20")
                                             }
                                             "https://app.vibedict/$encodedPath"
@@ -976,7 +1042,7 @@ fun DictionaryBodyItem(
                                     val firstFontFamily = fontList.firstOrNull()?.substringAfterLast('/')?.substringBeforeLast('.') ?: ""
                                     // Apply to body with high specificity
                                     "$fontFaceDeclarations\nbody { font-family: '$firstFontFamily', sans-serif !important; }"
-                                } else { 
+                                } else {
                                     android.util.Log.d("MdictJNI", "Using default app font as base: Roboto Flex")
                                     ""
                                 }
@@ -999,13 +1065,37 @@ fun DictionaryBodyItem(
                                 val linkFixerJs = """
                                     <script>
                                     try {
-                                        var links = document.getElementsByTagName('a');
-                                        for (var i = 0; i < links.length; i++) {
-                                            var href = links[i].getAttribute('href');
-                                            if (href && (href.startsWith('content://') || href.startsWith('entry://')) && href.includes(' ')) {
-                                                links[i].href = href.replace(/ /g, '%20');
+                                        document.addEventListener('click', function(e) {
+                                            var target = e.target.closest('a');
+                                            if (target && target.href) {
+                                                var clickedUrl = target.getAttribute('href') || target.href;
+                                                if (clickedUrl && (clickedUrl.startsWith('entry://') || clickedUrl.startsWith('sound://') || clickedUrl.startsWith('content://'))) {
+                                                    e.preventDefault();
+                                                    var finalUrl = clickedUrl;
+                                                    
+                                                    if (clickedUrl.startsWith('entry://')) {
+                                                        var word = clickedUrl.substring(8);
+                                                        try { word = decodeURIComponent(word); } catch(err) {}
+                                                        finalUrl = 'entry://' + encodeURIComponent(word).replace(/['()~*!]/g, function(c) {
+                                                            return '%' + c.charCodeAt(0).toString(16).toUpperCase();
+                                                        });
+                                                    } else if (clickedUrl.startsWith('sound://')) {
+                                                        var word = clickedUrl.substring(8);
+                                                        try { word = decodeURIComponent(word); } catch(err) {}
+                                                        finalUrl = 'sound://' + encodeURIComponent(word).replace(/['()~*!]/g, function(c) {
+                                                            return '%' + c.charCodeAt(0).toString(16).toUpperCase();
+                                                        });
+                                                    } else {
+                                                        try {
+                                                            finalUrl = encodeURI(decodeURI(clickedUrl));
+                                                        } catch (err) {
+                                                            finalUrl = encodeURI(clickedUrl);
+                                                        }
+                                                    }
+                                                    window.location.href = finalUrl;
+                                                }
                                             }
-                                        }
+                                        });
                                     } catch (e) { console.error('Link fixer script failed', e); }
                                     </script>
                                 """.trimIndent()

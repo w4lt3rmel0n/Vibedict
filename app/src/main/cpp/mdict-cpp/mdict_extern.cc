@@ -62,10 +62,18 @@ extern "C" {
  init the dictionary
  */
 void *mdict_init(const char *dictionary_path) {
-  std::string dict_file_path(dictionary_path);
-  auto *mydict = new mdict::Mdict(dict_file_path);
-  mydict->init();
-  return mydict;
+  try {
+    std::string dict_file_path(dictionary_path);
+    auto *mydict = new mdict::Mdict(dict_file_path);
+    mydict->init();
+    return mydict;
+  } catch (const std::exception &e) {
+    fprintf(stderr, "mdict_init Exception for %s: %s\n", dictionary_path, e.what());
+    return nullptr;
+  } catch (...) {
+    fprintf(stderr, "mdict_init unknown exception for %s\n", dictionary_path);
+    return nullptr;
+  }
 }
 
 /**

@@ -91,6 +91,18 @@ std::string be_bin_to_utf8(const char* bytes, unsigned long offset,
                            unsigned long len);
 
 /**
+ * Converts GBK binary array to UTF-8 string
+ */
+std::string gbk_to_utf8(const char* bytes, unsigned long offset,
+                        unsigned long len);
+
+/**
+ * Converts BIG5 binary array to UTF-8 string
+ */
+std::string big5_to_utf8(const char* bytes, unsigned long offset,
+                         unsigned long len);
+
+/**
  * Converts a big-endian binary array to UTF-16 string
  * @param bytes Source byte array
  * @param offset Starting position in the byte array

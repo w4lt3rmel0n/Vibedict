@@ -1080,6 +1080,7 @@ fun DictionaryDetailScreen(navController: NavController, dictId: String) {
     }
 
     if (showCssDialog || showJsDialog) {
+        val clipboardManager = androidx.compose.ui.platform.LocalClipboardManager.current
         Dialog(onDismissRequest = { showCssDialog = false; showJsDialog = false }) {
             Card(modifier = Modifier.fillMaxWidth().height(400.dp).padding(16.dp)) {
                 Column(Modifier.padding(16.dp)) {
@@ -1088,7 +1089,20 @@ fun DictionaryDetailScreen(navController: NavController, dictId: String) {
                     Box(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
                         Text(contentToView, style = MaterialTheme.typography.bodySmall)
                     }
-                    TextButton(onClick = { showCssDialog = false; showJsDialog = false }, Modifier.align(Alignment.End)) { Text(stringResource(R.string.close)) }
+                    Row(
+                        modifier = Modifier.align(Alignment.End),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        TextButton(onClick = {
+                            clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(contentToView))
+                            android.widget.Toast.makeText(context, "Copied to clipboard", android.widget.Toast.LENGTH_SHORT).show()
+                        }) {
+                            Text(stringResource(R.string.copy))
+                        }
+                        TextButton(onClick = { showCssDialog = false; showJsDialog = false }) {
+                            Text(stringResource(R.string.close))
+                        }
+                    }
                 }
             }
         }

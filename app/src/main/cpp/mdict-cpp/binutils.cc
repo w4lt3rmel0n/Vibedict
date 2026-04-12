@@ -19,6 +19,9 @@
 #include <string>
 #include <vector>
 
+#include "encode/gbk_table.h"
+#include "encode/big5_table.h"
+
 using namespace std;
 
 char const hex_chars[16] = {'0', '1', '2', '3', '4', '5', '6', '7',
@@ -153,6 +156,68 @@ std::string be_bin_to_utf8(const char *bytes, unsigned long offset,
                            unsigned long len) {
   std::string u8(bytes + offset * sizeof(char), len);
   return u8;
+}
+
+std::string gbk_to_utf8(const char* bytes, unsigned long offset, unsigned long len) {
+    std::string utf8;
+    utf8.reserve(len * 2);
+    const unsigned char* p = (const unsigned char*)bytes + offset;
+    const unsigned char* end = p + len;
+    while (p < end) {
+        if (*p < 0x80) {
+            if (*p == 0) { p++; continue; }
+            utf8.push_back(*p++);
+        } else if (p + 1 < end) {
+            uint16_t idx = (*p << 8) | *(p + 1);
+            p += 2;
+            uint16_t u16 = gbk_to_utf16[idx];
+            if (u16 == 0) u16 = '?';
+            if (u16 <= 0x7F) {
+                utf8.push_back(static_cast<char>(u16));
+            } else if (u16 <= 0x7FF) {
+                utf8.push_back(static_cast<char>(0xC0 | (u16 >> 6)));
+                utf8.push_back(static_cast<char>(0x80 | (u16 & 0x3F)));
+            } else {
+                utf8.push_back(static_cast<char>(0xE0 | (u16 >> 12)));
+                utf8.push_back(static_cast<char>(0x80 | ((u16 >> 6) & 0x3F)));
+                utf8.push_back(static_cast<char>(0x80 | (u16 & 0x3F)));
+            }
+        } else {
+            p++;
+        }
+    }
+    return utf8;
+}
+
+std::string big5_to_utf8(const char* bytes, unsigned long offset, unsigned long len) {
+    std::string utf8;
+    utf8.reserve(len * 2);
+    const unsigned char* p = (const unsigned char*)bytes + offset;
+    const unsigned char* end = p + len;
+    while (p < end) {
+        if (*p < 0x80) {
+            if (*p == 0) { p++; continue; }
+            utf8.push_back(*p++);
+        } else if (p + 1 < end) {
+            uint16_t idx = (*p << 8) | *(p + 1);
+            p += 2;
+            uint16_t u16 = big5_to_utf16[idx];
+            if (u16 == 0) u16 = '?';
+            if (u16 <= 0x7F) {
+                utf8.push_back(static_cast<char>(u16));
+            } else if (u16 <= 0x7FF) {
+                utf8.push_back(static_cast<char>(0xC0 | (u16 >> 6)));
+                utf8.push_back(static_cast<char>(0x80 | (u16 & 0x3F)));
+            } else {
+                utf8.push_back(static_cast<char>(0xE0 | (u16 >> 12)));
+                utf8.push_back(static_cast<char>(0x80 | ((u16 >> 6) & 0x3F)));
+                utf8.push_back(static_cast<char>(0x80 | (u16 & 0x3F)));
+            }
+        } else {
+            p++;
+        }
+    }
+    return utf8;
 }
 
 std::string be_bin_to_utf16(const char *bytes, unsigned long offset,

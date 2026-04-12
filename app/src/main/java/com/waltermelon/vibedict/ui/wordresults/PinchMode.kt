@@ -1,6 +1,7 @@
 package com.waltermelon.vibedict.ui.wordresults
 
 import android.content.Context
+import android.util.Log
 import java.net.URLEncoder
 
 /**
@@ -37,16 +38,18 @@ object WebViewModeRenderer {
         themeColors: ThemeColors
     ): String {
         val zoomPercent = ((displayScale + 0.5f) * 100).toInt()
-        
+
         val entriesHtml = entries.mapIndexed { index, entry ->
             val isExpanded = expandedStates[entry.dictionaryName] ?: entry.isExpandedByDefault
             val selectedIndex = selectedIndices[entry.id] ?: 0
             val customFontPaths = fontPathsMap[entry.id] ?: entry.customFontPaths
-            
+
             val contentToShow = if (entry.entries.isNotEmpty()) {
                 entry.entries.getOrElse(selectedIndex) { entry.entries[0] }
             } else ""
-            
+
+            Log.d("WebViewModeRenderer", "Rendering entry: ${entry.dictionaryName}, Content length: ${contentToShow.length}, Sample: ${contentToShow.take(200).replace("\n", " ")}")
+
             generateEntrySection(
                 entry = entry,
                 content = contentToShow,
@@ -59,7 +62,7 @@ object WebViewModeRenderer {
                 themeColors = themeColors
             )
         }.joinToString("\n")
-        
+
         return """
 <!DOCTYPE html>
 <html>
@@ -98,6 +101,7 @@ object WebViewModeRenderer {
         
         html {
             zoom: $zoomPercent%;
+            scroll-padding-top: 50px;
         }
         
         body {
@@ -275,8 +279,22 @@ object WebViewModeRenderer {
         
         // Select entry pill
         function selectEntry(entryId, index) {
+            console.log('selectEntry triggered for entry: ' + entryId + ', index: ' + index);
+            // URL encode the entryId to prevent Chromium from blocking it if it contains special characters
+            var targetUrl = 'vibedict://selectEntry/' + encodeURIComponent(entryId) + '/' + index;
+            console.log('Attempting to redirect to: ' + targetUrl);
+            
+            var redirectTimeout = setTimeout(function() {
+                console.error('Redirect failed or stuck for URL: ' + targetUrl);
+            }, 2000);
+            
+            window.addEventListener('pagehide', function() {
+                clearTimeout(redirectTimeout);
+                console.log('Successfully redirected to: ' + targetUrl);
+            }, { once: true });
+            
             // This will trigger a navigation to refresh with new selection
-            window.location.href = 'vibedict://selectEntry/' + entryId + '/' + index;
+            window.location.href = targetUrl;
         }
         
         // Auto-resize iframes
@@ -318,7 +336,7 @@ object WebViewModeRenderer {
 </html>
         """.trimIndent()
     }
-    
+
     /**
      * Generate a single entry section with header and iframe content.
      */
@@ -337,7 +355,7 @@ object WebViewModeRenderer {
         val expandedClass = if (isExpanded) "expanded" else "collapsed"
         val sectionCollapsedClass = if (!isExpanded) "section-collapsed" else ""
         val iconExpandedClass = if (isExpanded) "expanded" else ""
-        
+
         val pillsHtml = if (entry.entries.size > 1 && isExpanded) {
             val pills = entry.entries.mapIndexed { index, _ ->
                 val selectedClass = if (index == selectedIndex) "selected" else ""
@@ -345,7 +363,7 @@ object WebViewModeRenderer {
             }.joinToString("\n")
             """<div id="pills-$entryId" class="entry-pills">$pills</div>"""
         } else ""
-        
+
         val iframeContent = generateIframeContent(
             content = content,
             customCss = entry.customCss,
@@ -355,14 +373,14 @@ object WebViewModeRenderer {
             forceOriginalStyle = forceOriginalStyle,
             dictId = entry.id
         )
-        
+
         val loadingHtml = if (entry.isLoading) {
             """<div class="loading-spinner"><div class="spinner"></div></div>"""
         } else ""
-        
+
         // SVG expand_more icon matching Material Icons
         val expandIconSvg = """<svg id="icon-$entryId" class="expand-icon $iconExpandedClass" xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 -960 960 960" width="24" fill="currentColor"><path d="M480-345 240-585l56-56 184 184 184-184 56 56-240 240Z"/></svg>"""
-        
+
         return """
         <div class="entry-section $sectionCollapsedClass" data-entry-id="${entry.id}">
             <div class="entry-header" onclick="toggleEntry('$entryId')">
@@ -372,12 +390,19 @@ object WebViewModeRenderer {
             $pillsHtml
             <div id="body-$entryId" class="entry-body $expandedClass">
                 $loadingHtml
-                ${if (!entry.isLoading) """<iframe class="entry-iframe" scrolling="no" sandbox="allow-scripts allow-same-origin" srcdoc="${escapeHtmlAttribute(iframeContent)}"></iframe>""" else ""}
+                ${if (!entry.isLoading) {
+                    IframeCache.cache[entry.id] = iframeContent
+                    """<iframe class="entry-iframe" scrolling="no" sandbox="allow-scripts allow-same-origin" src="https://app.vibedict/entry_html?id=${android.net.Uri.encode(entry.id)}"></iframe>"""
+                } else ""}
             </div>
         </div>
         """.trimIndent()
     }
-    
+
+    object IframeCache {
+        val cache = java.util.concurrent.ConcurrentHashMap<String, String>()
+    }
+
     /**
      * Generate the content for an iframe with font isolation.
      */
@@ -390,26 +415,35 @@ object WebViewModeRenderer {
         forceOriginalStyle: Boolean,
         dictId: String
     ): String {
-        val iframeOverflowCss = """
-            html, body {
-                overflow: hidden !important;
-                overflow-x: hidden !important;
-                overflow-y: hidden !important;
-                height: auto !important;
-                min-height: 0 !important;
-                max-height: none !important;
-            }
-        """.trimIndent()
-        
+        val iframeOverflowCss = """"
+    html, body {
+        overflow: hidden !important;
+        overflow-x: hidden !important;
+        height: auto !important;
+        min-height: 0 !important;
+        max-height: none !important;
+    }
+    
+    /* Override the clipping negative margin from style.css */
+    ls[w], ls {
+        margin-left: 0 !important;
+    }
+    
+    /* Optional: Add a tiny bit of padding to the iframe body so text doesn't touch the absolute edge */
+    body {
+        padding: 0 4px !important;
+    }
+""".trimIndent()
+
         val transparencyCss = "html, body { background-color: transparent !important; }"
-        
+
         val darkModeCss = if (isDarkTheme && !forceOriginalStyle) {
             """
             html { filter: invert(1) hue-rotate(180deg); }
             img, video, iframe, .handwriting_img, .wordsource_img { filter: invert(1) hue-rotate(180deg); }
             """.trimIndent()
         } else ""
-        
+
         val fontCss = if (customFontPaths.isNotEmpty()) {
             val fontList = customFontPaths.split(",").filter { it.isNotBlank() }
             val fontFaceDeclarations = fontList.joinToString("\n") { path ->
@@ -443,19 +477,18 @@ object WebViewModeRenderer {
             }
             """
         }
-        
+
         val sanitizedCss = customCss.replace("</?style[^>]*>".toRegex(RegexOption.IGNORE_CASE), "")
         val sanitizedJs = customJs.replace("</?script[^>]*>".toRegex(RegexOption.IGNORE_CASE), "")
-        
+
         val finalCss = "$iframeOverflowCss\n$sanitizedCss\n$transparencyCss\n$darkModeCss\n$fontCss"
-        
+
         return """
 <!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <base href="https://app.vibedict/">
     <style>$finalCss</style>
 </head>
 <body>
@@ -473,12 +506,79 @@ object WebViewModeRenderer {
             var text = sel ? sel.toString() : '';
             parent.postMessage({type: 'iframeSelection', text: text}, '*');
         });
+        
+        // Track link clicks for debugging redirection
+        document.addEventListener('click', function(e) {
+            var target = e.target.closest('a');
+            
+            // Add comprehensive logging out here to see what we caught
+            if (target) {
+                console.log('Iframe link clicked. target.href: ' + target.href);
+                console.log('Iframe link clicked. target.getAttribute("href"): ' + target.getAttribute('href'));
+                try {
+                    console.log('Iframe link clicked. innerText: ' + target.innerText);
+                } catch(e) {}
+            }
+            
+            if (target && target.href) {
+                var clickedUrl = target.href;
+                console.log('Iframe link clicked, attempting to redirect to: ' + clickedUrl);
+                
+                // Ensure URLs with unescaped special characters (like 【】, (), spaces, or Japanese) 
+                // are valid URIs, otherwise Chromium drops the navigation before Android sees it.
+                if (clickedUrl.startsWith('entry://') || clickedUrl.startsWith('sound://') || clickedUrl.startsWith('content://')) {
+                    e.preventDefault();
+                    var finalUrl = clickedUrl;
+                    
+                    if (clickedUrl.startsWith('entry://')) {
+                        var word = clickedUrl.substring(8);
+                        try { word = decodeURIComponent(word); } catch(err) {}
+                        finalUrl = 'entry://' + encodeURIComponent(word).replace(/['()~*!]/g, function(c) {
+                            return '%' + c.charCodeAt(0).toString(16).toUpperCase();
+                        });
+                    } else if (clickedUrl.startsWith('sound://')) {
+                        var word = clickedUrl.substring(8);
+                        try { word = decodeURIComponent(word); } catch(err) {}
+                        finalUrl = 'sound://' + encodeURIComponent(word).replace(/['()~*!]/g, function(c) {
+                            return '%' + c.charCodeAt(0).toString(16).toUpperCase();
+                        });
+                    } else {
+                        try {
+                            finalUrl = encodeURI(decodeURI(clickedUrl));
+                        } catch (err) {
+                            finalUrl = encodeURI(clickedUrl);
+                        }
+                    }
+                    
+                    var redirectTimeout = setTimeout(function() {
+                        console.error('Iframe redirect stuck or failed for URL: ' + finalUrl);
+                    }, 2000);
+                    
+                    window.addEventListener('pagehide', function() {
+                        clearTimeout(redirectTimeout);
+                        console.log('Iframe successfully redirected for URL: ' + finalUrl);
+                    }, { once: true });
+                    
+                    window.location.href = finalUrl;
+                    return;
+                }
+                
+                var redirectTimeout = setTimeout(function() {
+                    console.error('Iframe redirect stuck or failed for URL: ' + clickedUrl);
+                }, 2000);
+                
+                window.addEventListener('pagehide', function() {
+                    clearTimeout(redirectTimeout);
+                    console.log('Iframe successfully redirected for URL: ' + clickedUrl);
+                }, { once: true });
+            }
+        });
     </script>
 </body>
 </html>
         """.trimIndent()
     }
-    
+
     private fun escapeHtml(text: String): String {
         return text
             .replace("&", "&amp;")
@@ -487,7 +587,7 @@ object WebViewModeRenderer {
             .replace("\"", "&quot;")
             .replace("'", "&#39;")
     }
-    
+
     private fun escapeHtmlAttribute(text: String): String {
         return text
             .replace("&", "&amp;")

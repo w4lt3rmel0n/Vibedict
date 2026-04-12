@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <item name="webview_search_query_tag" type="id" />
+    <item name="webview_last_html_tag" type="id" />
 </resources>

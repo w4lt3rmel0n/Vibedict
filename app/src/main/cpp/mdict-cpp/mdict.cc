@@ -30,6 +30,7 @@
 #include "include/mdict_extern.h"
 #include "include/xmlutils.h"
 #include "include/zlib_wrapper.h"
+#include "deps/minilzo/minilzo.h"
 
 #define LOG_TAG "MdictJNI"
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
@@ -284,8 +285,6 @@ namespace mdict {
                 this->encrypt = ENCRYPT_NO_ENC;
             }
         }
-        /// passed
-
         // -------- stylesheet ----------
         // stylesheet attribute if present takes from of:
         // style_number # 1-255
@@ -350,8 +349,13 @@ namespace mdict {
         }
 
         // ---------- encoding ------------
-        if (headinfo.find("Encoding") != headinfo.end() ||
-            headinfo["Encoding"] == "" || headinfo["Encoding"] == "UTF-8") {
+        if (headinfo.find("Encoding") == headinfo.end() || headinfo["Encoding"] == "") {
+            if (this->version >= 2.0) {
+                this->encoding = ENCODING_UTF16;
+            } else {
+                this->encoding = ENCODING_GB18030; // default for V1.2 is usually GBK
+            }
+        } else if (headinfo["Encoding"] == "UTF-8" || headinfo["Encoding"] == "utf-8") {
             this->encoding = ENCODING_UTF8;
         } else if (headinfo["Encoding"] == "GBK" ||
                    headinfo["Encoding"] == "GB2312") {
@@ -359,7 +363,9 @@ namespace mdict {
         } else if (headinfo["Encoding"] == "Big5" || headinfo["Encoding"] == "BIG5") {
             this->encoding = ENCODING_BIG5;
         } else if (headinfo["Encoding"] == "utf16" ||
-                   headinfo["Encoding"] == "utf-16") {
+                   headinfo["Encoding"] == "utf-16" ||
+                   headinfo["Encoding"] == "UTF-16" ||
+                   headinfo["Encoding"] == "UTF-16LE") {
             this->encoding = ENCODING_UTF16;
         } else {
             this->encoding = ENCODING_UTF8;
@@ -466,7 +472,7 @@ namespace mdict {
         if (this->number_width == 8)
             entries_num = be_bin_to_u64((const unsigned char *)entries_num_bytes);
         else if (this->number_width == 4)
-            key_block_num = be_bin_to_u32((const unsigned char *)entries_num_bytes);
+            entries_num = be_bin_to_u32((const unsigned char *)entries_num_bytes);
         if (entries_num_bytes)
             std::free(entries_num_bytes);
         /// passed
@@ -825,6 +831,15 @@ namespace mdict {
                         static_cast<unsigned long>(key_end_idx - key_start_idx -
                                                    this->number_width));
             }
+            else if (this->encoding == 5 /* ENCODING_GB18030 */) { // 新增 GBK 分支
+                key_text = gbk_to_utf8((char*)key_block, (key_start_idx + this->number_width),
+                    static_cast<unsigned long>(key_end_idx - key_start_idx - this->number_width));
+            }
+            else if (this->encoding == 2 /* ENCODING_BIG5 */) { // 新增 BIG5 分支
+                key_text = big5_to_utf8((char*)key_block, (key_start_idx + this->number_width),
+                    static_cast<unsigned long>(key_end_idx - key_start_idx - this->number_width));
+            }
+
             inner_key_list.push_back(new key_list_item(record_start, key_text));
 
             key_start_idx = key_end_idx + width;
@@ -870,15 +885,23 @@ namespace mdict {
 
         if ((key_block_comp_type[0] & 255) == 0) {
             // none compressed
-            key_block = (unsigned char *)(key_block_buffer + 8 * sizeof(char));
+            kb_uncompressed.assign(key_block_buffer + 8, key_block_buffer + comp_size);
+            key_block = kb_uncompressed.data();
+            if (kb_uncompressed.size() != decomp_size) {
+                 throw std::runtime_error("key block decompress size mismatch (uncompressed)");
+            }
         } else if ((key_block_comp_type[0] & 255) == 1) {
-            // 01000000
-            // TODO lzo decompress
-
+            kb_uncompressed.resize(decomp_size);
+            lzo_uint out_len = decomp_size;
+            int err = lzo1x_decompress_safe((const lzo_bytep)(key_block_buffer + 8), comp_size - 8,
+                                            (lzo_bytep)kb_uncompressed.data(), &out_len, NULL);
+            if (err != LZO_E_OK || out_len != decomp_size) {
+                throw std::runtime_error("lzo decompress failed");
+            }
+            key_block = kb_uncompressed.data();
         } else if ((key_block_comp_type[0] & 255) == 2) {
             // zlib compress
-            kb_uncompressed =
-                    zlib_mem_uncompress(key_block_buffer + 8 * sizeof(char), comp_size);
+            kb_uncompressed = zlib_mem_uncompress(key_block_buffer + 8 * sizeof(char), comp_size - 8, decomp_size);
             if (kb_uncompressed.empty()) {
                 throw std::runtime_error("key block decompress failed empty");
             }
@@ -895,6 +918,9 @@ namespace mdict {
         // split key
         std::vector<key_list_item *> tlist =
                 split_key_block(key_block, decomp_size, idx);
+
+        free(key_block_comp_type);
+        free(key_block_buffer);
         return tlist;
     }
 
@@ -917,10 +943,15 @@ namespace mdict {
             unsigned long decomp_size =
                     this->key_block_info_list[idx]->key_block_decomp_size;
             unsigned long start_ofset = i;
-            // unsigned long end_ofset = i + comp_size;
+            if (start_ofset + comp_size > kb_buff_len || start_ofset + 8 > kb_buff_len) {
+                fprintf(stderr, "key block offset out of bounds: idx=%ld, start=%lu, comp=%lu, kb_len=%lu, ver=%f, enc=%d\n",
+                        idx, start_ofset, comp_size, kb_buff_len, this->version, this->encoding);
+                throw std::runtime_error("key block offset out of bounds");
+            }
+
             // 4 bytes comp type
             char *key_block_comp_type = (char *)calloc(4, sizeof(char));
-            memcpy(key_block_comp_type, key_block_buffer, 4 * sizeof(char));
+            memcpy(key_block_comp_type, key_block_buffer + start_ofset, 4 * sizeof(char));
             // 4 bytes adler checksum of decompressed key block
             // TODO  adler32 = unpack('>I', key_block_compressed[start + 4:start +
             // 8])[0]
@@ -929,31 +960,39 @@ namespace mdict {
 
             unsigned char *key_block = nullptr;
 
-            std::vector<uint8_t> kb_uncompressed; // note: ensure kb_uncompressed not
-            // die when out of uncompress scope
+            std::vector<uint8_t> kb_uncompressed;
 
-            if ((key_block_comp_type[0] & 255) == 0) {
-                // none compressed
-                key_block = key_block_buffer + 8 * sizeof(char);
-            } else if ((key_block_comp_type[0] & 255) == 1) {
-                // 01000000
-                // TODO lzo decompress
+            try {
+                if ((key_block_comp_type[0] & 255) == 0) {
+                    kb_uncompressed.assign(key_block_buffer + start_ofset + 8, key_block_buffer + start_ofset + comp_size);
+                    key_block = kb_uncompressed.data();
+                    if (kb_uncompressed.size() != decomp_size) {
+                        throw std::runtime_error("key block decompress size mismatch");
+                    }
+                } else if ((key_block_comp_type[0] & 255) == 1) {
+                    kb_uncompressed.resize(decomp_size);
+                    lzo_uint out_len = decomp_size;
+                    int err = lzo1x_decompress_safe((const lzo_bytep)(key_block_buffer + start_ofset + 8), comp_size - 8,
+                                                    (lzo_bytep)kb_uncompressed.data(), &out_len, NULL);
+                    if (err != LZO_E_OK || out_len != decomp_size) {
+                        throw std::runtime_error("lzo decompress failed");
+                    }
+                    key_block = kb_uncompressed.data();
+                } else if ((key_block_comp_type[0] & 255) == 2) {
+                    kb_uncompressed = zlib_mem_uncompress(key_block_buffer + start_ofset + 8, comp_size - 8, decomp_size);
+                    if (kb_uncompressed.empty()) {
+                        throw std::runtime_error("key block decompress failed");
+                    }
+                    key_block = kb_uncompressed.data();
 
-            } else if ((key_block_comp_type[0] & 255) == 2) {
-                // zlib compress
-                kb_uncompressed =
-                        zlib_mem_uncompress(key_block_buffer + start_ofset + 8, comp_size);
-                if (kb_uncompressed.empty() || kb_uncompressed.size() == 0) {
-                    throw std::runtime_error("key block decompress failed");
+                    uint32_t adler32cs = adler32checksum(key_block, static_cast<uint32_t>(decomp_size));
+                    assert(adler32cs == chksum);
+                    assert(kb_uncompressed.size() == decomp_size);
+                } else {
+                    throw std::runtime_error("cannot determine the key block compress type");
                 }
-                key_block = kb_uncompressed.data();
-
-                uint32_t adler32cs =
-                        adler32checksum(key_block, static_cast<uint32_t>(decomp_size));
-                assert(adler32cs == chksum);
-                assert(kb_uncompressed.size() == decomp_size);
-            } else {
-                throw std::runtime_error("cannot determine the key block compress type");
+            } catch (const std::exception& e) {
+                throw std::runtime_error(std::string("decode_key_block exception: ") + e.what());
             }
 
             // split key
@@ -1014,6 +1053,14 @@ namespace mdict {
                     (unsigned char *)record_info_buffer + 2 * number_width * sizeof(char));
             record_block_size = be_bin_to_u64((unsigned char *)record_info_buffer +
                                               3 * number_width * sizeof(char));
+        } else {
+            record_block_number = be_bin_to_u32((unsigned char *)record_info_buffer);
+            record_block_entries_number = be_bin_to_u32(
+                    (unsigned char *)record_info_buffer + number_width * sizeof(char));
+            record_block_header_size = be_bin_to_u32(
+                    (unsigned char *)record_info_buffer + 2 * number_width * sizeof(char));
+            record_block_size = be_bin_to_u32((unsigned char *)record_info_buffer +
+                                              3 * number_width * sizeof(char));
         }
 
         free(record_info_buffer);
@@ -1049,15 +1096,20 @@ namespace mdict {
                 uncomp_size =
                         be_bin_to_u64((unsigned char *)(record_header_buffer + size_counter));
                 size_counter += number_width;
-
-                this->record_header.push_back(new record_header_item(
-                        i, comp_size, uncomp_size, comp_accu, decomp_accu));
-                // ensure after push
-                comp_accu += comp_size;
-                decomp_accu += uncomp_size;
             } else {
-                // TODO
+                comp_size =
+                        be_bin_to_u32((unsigned char *)(record_header_buffer + size_counter));
+                size_counter += number_width;
+                uncomp_size =
+                        be_bin_to_u32((unsigned char *)(record_header_buffer + size_counter));
+                size_counter += number_width;
             }
+
+            this->record_header.push_back(new record_header_item(
+                    i, comp_size, uncomp_size, comp_accu, decomp_accu));
+            // ensure after push
+            comp_accu += comp_size;
+            decomp_accu += uncomp_size;
         }
 
         free(record_header_buffer);
@@ -1108,8 +1160,12 @@ namespace mdict {
         // We can read directly from the buffer
         checksum = be_bin_to_u32((unsigned char *)record_block_cmp_buffer.data() + 4);
 
-        if (comp_type == 0 /* not compressed TODO*/) {
-            throw std::runtime_error("uncompress block not support yet");
+        if (comp_type == 0) {
+            record_block_uncompressed_v.assign(record_block_cmp_buffer.begin() + 8, record_block_cmp_buffer.begin() + comp_size);
+            record_block_uncompressed_b = record_block_uncompressed_v.data();
+            if (record_block_uncompressed_v.size() != uncomp_size) {
+                throw std::runtime_error("record block uncompress size mismatch");
+            }
         } else {
             char *record_block_decrypted_buff;
             if (this->encrypt == ENCRYPT_RECORD_ENC /* record block encrypted */) {
@@ -1119,11 +1175,18 @@ namespace mdict {
             record_block_decrypted_buff = record_block_cmp_buffer.data() + 8 * sizeof(char);
             // decompress
             if (comp_type == 1 /* lzo */) {
-                throw std::runtime_error("lzo compress not support yet");
+                record_block_uncompressed_v.resize(uncomp_size);
+                lzo_uint out_len = uncomp_size;
+                int err = lzo1x_decompress_safe((const lzo_bytep)record_block_decrypted_buff, comp_size - 8,
+                                                (lzo_bytep)record_block_uncompressed_v.data(), &out_len, NULL);
+                if (err != LZO_E_OK || out_len != uncomp_size) {
+                    throw std::runtime_error("lzo decompress failed");
+                }
+                record_block_uncompressed_b = record_block_uncompressed_v.data();
             } else if (comp_type == 2) {
                 // zlib compress
                 record_block_uncompressed_v =
-                        zlib_mem_uncompress(record_block_decrypted_buff, comp_size);
+                        zlib_mem_uncompress(record_block_decrypted_buff, comp_size - 8, uncomp_size);
                 if (record_block_uncompressed_v.empty()) {
                     throw std::runtime_error("record block decompress failed size == 0");
                 }
@@ -1200,12 +1263,22 @@ namespace mdict {
                     def.push_back(hex_map[b & 0x0F]);
                 }
             } else {
-                // --- FINAL FIX: ---
-                // Ignore the (often incorrect) 'this->encoding' flag for MDX files.
-                // The 'hiroshima' files are UTF-8, so we will *always* treat
-                // MDX content as UTF-8.
-                def = be_bin_to_utf8((char *)record_block, expect_start,
-                                     upbound /* to delete null character*/);
+                if (this->encoding == 1 /* ENCODING_UTF16 */) {
+                    unsigned char *utf16_point = (unsigned char *)(record_block + expect_start);
+                    unsigned long utf16_len = upbound;
+                    unsigned char *utf8_buff = (unsigned char *)calloc(utf16_len * 3 + 1, sizeof(unsigned char));
+                    ssize_t utf8_len = utf16le_to_utf8(utf16_point, utf16_len, utf8_buff, utf16_len * 3 + 1);
+                    if (utf8_len > 0) {
+                        def = std::string(reinterpret_cast<char *>(utf8_buff), utf8_len);
+                    }
+                    free(utf8_buff);
+                } else if (this->encoding == 5 /* ENCODING_GB18030 */) {
+                    def = gbk_to_utf8((char *)record_block, expect_start, upbound);
+                } else if (this->encoding == 2 /* ENCODING_BIG5 */) {
+                    def = big5_to_utf8((char *)record_block, expect_start, upbound);
+                } else {
+                    def = be_bin_to_utf8((char *)record_block, expect_start, upbound);
+                }
             }
 
             std::pair<std::string, std::string> vp(key_text, def);
@@ -1251,8 +1324,12 @@ namespace mdict {
             checksum = be_bin_to_u32((unsigned char *)checksum_b);
             free(checksum_b);
 
-            if (comp_type == 0 /* not compressed TODO*/) {
-                throw std::runtime_error("uncompress block not support yet");
+            if (comp_type == 0) {
+                record_block_uncompressed_v.assign(record_block_cmp_buffer + 8, record_block_cmp_buffer + comp_size);
+                record_block_uncompressed_b = record_block_uncompressed_v.data();
+                if (record_block_uncompressed_v.size() != uncomp_size) {
+                    throw std::runtime_error("record block uncompress size mismatch");
+                }
             } else {
                 char *record_block_decrypted_buff;
                 if (this->encrypt == ENCRYPT_RECORD_ENC /* record block encrypted */) {
@@ -1262,11 +1339,18 @@ namespace mdict {
                 record_block_decrypted_buff = record_block_cmp_buffer + 8 * sizeof(char);
                 // decompress
                 if (comp_type == 1 /* lzo */) {
-                    throw std::runtime_error("lzo compress not support yet");
+                    record_block_uncompressed_v.resize(uncomp_size);
+                    lzo_uint out_len = uncomp_size;
+                    int err = lzo1x_decompress_safe((const lzo_bytep)record_block_decrypted_buff, comp_size - 8,
+                                                    (lzo_bytep)record_block_uncompressed_v.data(), &out_len, NULL);
+                    if (err != LZO_E_OK || out_len != uncomp_size) {
+                        throw std::runtime_error("lzo decompress failed");
+                    }
+                    record_block_uncompressed_b = record_block_uncompressed_v.data();
                 } else if (comp_type == 2) {
                     // zlib compress
                     record_block_uncompressed_v =
-                            zlib_mem_uncompress(record_block_decrypted_buff, comp_size);
+                            zlib_mem_uncompress(record_block_decrypted_buff, comp_size - 8, uncomp_size);
                     if (record_block_uncompressed_v.empty()) {
                         throw std::runtime_error("record block decompress failed size == 0");
                     }
@@ -1339,8 +1423,15 @@ namespace mdict {
         // key block info offset indicator
         unsigned long data_offset = 0;
 
+        std::vector<uint8_t> decompress_buff;
         if (this->version >= 2.0) {
             // if version >= 2.0, use zlib compression
+            if (kb_info_buff_len < 8) {
+                throw std::runtime_error("kb_info_buff_len is too small for version>=2.0");
+            }
+            if (this->key_block_info_decompress_size > 1024 * 1024 * 100) { // Limit to 100MB
+                throw std::runtime_error("key_block_info_decompress_size is impossibly large");
+            }
             assert(kb_info_buff[0] == 2);
             assert(kb_info_buff[1] == 0);
             assert(kb_info_buff[2] == 0);
@@ -1350,35 +1441,21 @@ namespace mdict {
                 kb_info_decrypted = mdx_decrypt((byte *)kb_info_buff, kb_info_buff_len);
             }
 
-            // finally, we needs to check adler32 checksum
-            // key_block_info_compressed[4:8] => adler32 checksum
-            //          uint32_t chksum = be_bin_to_u32((unsigned char*) (kb_info_buff +
-            //          4));
-            //          uint32_t adlercs = adler32checksum(key_block_info_uncomp,
-            //          static_cast<uint32_t>(key_block_info_uncomp_len)) & 0xffffffff;
-            //
-            //          assert(chksum == adlercs);
+            try {
+                decompress_buff =
+                        zlib_mem_uncompress(kb_info_decrypted + 8, kb_info_buff_len - 8,
+                                            this->key_block_info_decompress_size);
+            } catch (const std::exception& e) {
+                throw std::runtime_error(std::string("zlib decompress vector alloc failed: ") + e.what());
+            }
 
-            /// here passed, key block info is corrected
-            // TODO decode key block info compressed into keys list
-
-            // for version 2.0, will compress by zlib, lzo just just for 1.0
-            // key_block_info_buff[0:8] => compress_type
-            // TODO zlib decompress
-            // TODO:
-            // if the size of compressed data original data is unknown,
-            // we malloc 8 size of source data len, we cannot estimate the original data
-            // size
-            // but currently, we know the size of key_block_info decompress size, so we
-            // use this
-
-            // note: we should uncompress key_block_info_buffer[8:] data, so we need
-            // (decrypted + 8, and length -8)
-            std::vector<uint8_t> decompress_buff =
-                    zlib_mem_uncompress(kb_info_decrypted + 8, kb_info_buff_len - 8,
-                                        this->key_block_info_decompress_size);
             /// uncompress successed
-            assert(decompress_buff.size() == this->key_block_info_decompress_size);
+            if (decompress_buff.size() != this->key_block_info_decompress_size) {
+                 throw std::runtime_error("decompress_buff.size() mismatch");
+            }
+        } else {
+            decompress_buff.assign(key_block_info_buffer, key_block_info_buffer + kb_info_buff_len);
+        }
 
             // get key block info list
             //          std::vector<key_block_info*> key_block_info_list;
@@ -1445,13 +1522,15 @@ namespace mdict {
                 }
                 data_offset += byte_width;
 
-                // step_gap means first key start offset to first key end;
                 int step_gap = 0;
+                unsigned long utf16_len_bytes = 0;
 
-                if (this->encoding == 1 /* encoding utf16 equals 1*/) {
+                if (this->encoding == 1 /* ENCODING_UTF16 */) {
                     step_gap = (first_key_size + text_term) * 2;
+                    utf16_len_bytes = first_key_size * 2;
                 } else {
                     step_gap = first_key_size + text_term;
+                    utf16_len_bytes = first_key_size;
                 }
 
                 // Check bounds for first_key content
@@ -1460,21 +1539,26 @@ namespace mdict {
                 }
 
                 // DECODE first CODE
-                // TODO here minus the terminal character size(1), but we still not sure
-                // should minus this or not
                 std::string first_key;
                 if (this->filetype == "MDX") {
-                    first_key =
-                            be_bin_to_utf8((char *)(decompress_buff.data() + data_offset), 0,
-                                           (unsigned long)step_gap - text_term);
+                    if (this->encoding == 5 /* ENCODING_GB18030 */) {
+                        first_key = gbk_to_utf8((char*)(decompress_buff.data() + data_offset), 0, utf16_len_bytes);
+                    }
+                    else if (this->encoding == 2 /* ENCODING_BIG5 */) {
+                        first_key = big5_to_utf8((char*)(decompress_buff.data() + data_offset), 0, utf16_len_bytes);
+                    }
+                    else {
+                        first_key = be_bin_to_utf8((char*)(decompress_buff.data() + data_offset), 0, utf16_len_bytes);
+                    }
                 } else {
                     unsigned char *utf16_point =
                             (unsigned char *)(decompress_buff.data() + data_offset);
-                    unsigned long utf16_len = (unsigned long)step_gap - text_term;
                     unsigned char *utf8_buff =
-                            (unsigned char *)calloc(utf16_len, sizeof(unsigned char));
-                    utf16le_to_utf8(utf16_point, utf16_len - 1, utf8_buff, utf16_len);
-                    first_key = std::string(reinterpret_cast<char *>(utf8_buff), utf16_len);
+                            (unsigned char *)calloc(utf16_len_bytes * 3 + 1, sizeof(unsigned char));
+                    ssize_t written = utf16le_to_utf8(utf16_point, utf16_len_bytes, utf8_buff, utf16_len_bytes * 3 + 1);
+                    if (written > 0) {
+                        first_key = std::string(reinterpret_cast<char *>(utf8_buff), written);
+                    }
                     free(utf8_buff);
                 }
                 // move forward
@@ -1499,8 +1583,10 @@ namespace mdict {
 
                 if (this->encoding == 1 /* ENCODING_UTF16 */) {
                     step_gap = (last_key_size + text_term) * 2;
+                    utf16_len_bytes = last_key_size * 2;
                 } else {
                     step_gap = last_key_size + text_term;
+                    utf16_len_bytes = last_key_size;
                 }
 
                 // Check bounds for last_key content
@@ -1510,17 +1596,24 @@ namespace mdict {
 
                 std::string last_key;
                 if (this->filetype == "MDX") {
-                    last_key =
-                            be_bin_to_utf8((char *)(decompress_buff.data() + data_offset), 0,
-                                           (unsigned long)step_gap - text_term);
+                    if (this->encoding == 5 /* ENCODING_GB18030 */) {
+                        last_key = gbk_to_utf8((char*)(decompress_buff.data() + data_offset), 0, utf16_len_bytes);
+                    }
+                    else if (this->encoding == 2 /* ENCODING_BIG5 */) {
+                        last_key = big5_to_utf8((char*)(decompress_buff.data() + data_offset), 0, utf16_len_bytes);
+                    }
+                    else {
+                        last_key = be_bin_to_utf8((char*)(decompress_buff.data() + data_offset), 0, utf16_len_bytes);
+                    }
                 } else {
                     unsigned char *utf16_point =
                             (unsigned char *)(decompress_buff.data() + data_offset);
-                    unsigned long utf16_len = (unsigned long)step_gap - text_term;
                     unsigned char *utf8_buff =
-                            (unsigned char *)calloc(utf16_len, sizeof(unsigned char));
-                    utf16le_to_utf8(utf16_point, utf16_len - 1, utf8_buff, utf16_len);
-                    last_key = std::string(reinterpret_cast<char *>(utf8_buff), utf16_len);
+                            (unsigned char *)calloc(utf16_len_bytes * 3 + 1, sizeof(unsigned char));
+                    ssize_t written = utf16le_to_utf8(utf16_point, utf16_len_bytes, utf8_buff, utf16_len_bytes * 3 + 1);
+                    if (written > 0) {
+                        last_key = std::string(reinterpret_cast<char *>(utf8_buff), written);
+                    }
                     free(utf8_buff);
                 }
 
@@ -1586,12 +1679,6 @@ namespace mdict {
                           << std::endl;
             }
 
-
-        } else {
-            // doesn't compression
-            throw std::logic_error("not implements yet");
-        }
-
         this->key_block_body_start =
                 this->key_block_info_start_offset + this->key_block_info_size;
         /// passed
@@ -1620,7 +1707,6 @@ namespace mdict {
  * init the dictionary file
  */
     void Mdict::init() {
-        // If file_ptr is not set, try to open the file using the filename (path-based constructor)
         if (!this->file_ptr) {
             if (!std::filesystem::exists(filename)) {
                 throw std::runtime_error("File does not exist: " + filename);
@@ -1628,17 +1714,19 @@ namespace mdict {
             this->file_ptr = fopen(this->filename.c_str(), "rb");
         }
 
-        // Check if file_ptr is valid (opened in constructor or just now)
         if (!this->file_ptr) {
             throw std::runtime_error("File pointer is null (Open failed)");
         }
 
-        /* indexing... */
+        printf("DEBUG: read_header()\n");
         this->read_header();
+        printf("DEBUG: read_key_block_header()\n");
         this->read_key_block_header();
+        printf("DEBUG: read_key_block_info()\n");
         this->read_key_block_info();
+        printf("DEBUG: read_record_block_header()\n");
         this->read_record_block_header();
-        //  this->decode_record_block(); // don't use this function, it's too slow
+        printf("DEBUG: init() finished\n");
     }
 
 /**

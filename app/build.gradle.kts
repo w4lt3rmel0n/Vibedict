@@ -13,7 +13,7 @@ android {
         minSdk = 24
         targetSdk = 36
         versionCode = 13
-        versionName = "0.6.0"
+        versionName = "0.7.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         @Suppress("UnstableApiUsage")
@@ -59,17 +59,6 @@ android {
     }
     ndkVersion = "27.0.12077973"
     buildToolsVersion = "36.1.0"
-    applicationVariants.all {
-        outputs.all {
-            val impl = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
-            val abi = impl.filters.find { it.filterType == "ABI" }?.identifier
-            if (abi != null) {
-                outputFileName = "Vibedict-${abi}.apk"
-            } else {
-                outputFileName = "Vibedict.apk"
-            }
-        }
-    }
 }
 
 kotlin {
