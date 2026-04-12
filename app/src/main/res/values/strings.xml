@@ -25,6 +25,7 @@
     <string name="clear_all">Clear All</string>
     <string name="no_history">No history yet. Start searching!</string>
     <string name="no_def_found_collection">No definition found in selected collection.</string>
+    <string name="click_tick_to_search_fts">Click the tick to start full-text search.</string>
 
     <string name="no_bookmarks">You haven\'t bookmarked any words yet.</string>
     <string name="remove_bookmark">Remove bookmark</string>

@@ -25,6 +25,9 @@ class SearchViewModel(private val repository: UserPreferencesRepository) : ViewM
     private val _isSearching = MutableStateFlow(false)
     val isSearching: StateFlow<Boolean> = _isSearching.asStateFlow()
 
+    private val _lastFtsQuery = MutableStateFlow("")
+    val lastFtsQuery: StateFlow<String> = _lastFtsQuery.asStateFlow()
+
     private val _searchResults = MutableStateFlow<List<MergedSearchResult>>(emptyList())
     val searchResults: StateFlow<List<MergedSearchResult>> = _searchResults.asStateFlow()
 
@@ -47,7 +50,8 @@ class SearchViewModel(private val repository: UserPreferencesRepository) : ViewM
                 isFullText,
                 activeCollectionId,
                 collections,
-                useWildcard
+                useWildcard,
+                _lastFtsQuery
             ) { args: Array<Any?> ->
                 val query = args[0] as String
                 val regex = args[1] as Boolean
@@ -56,9 +60,12 @@ class SearchViewModel(private val repository: UserPreferencesRepository) : ViewM
                 @Suppress("UNCHECKED_CAST")
                 val allCollections = args[4] as List<DictCollection>
                 val wildcard = args[5] as Boolean
+                val lastFtsQuery = args[6] as String
 
-                SearchRequest(query, regex, fullText, activeId, allCollections, wildcard)
-            }.collectLatest { request ->
+                val effectiveQuery = if (fullText) lastFtsQuery else query
+
+                SearchRequest(effectiveQuery, regex, fullText, activeId, allCollections, wildcard)
+            }.distinctUntilChanged().collectLatest { request ->
                 performSearch(request)
             }
         }
@@ -66,6 +73,15 @@ class SearchViewModel(private val repository: UserPreferencesRepository) : ViewM
 
     fun onSearchQueryChanged(query: String) {
         _searchQuery.value = query
+        if (isFullText.value) {
+            _searchResults.value = emptyList()
+        }
+    }
+
+    fun triggerFullTextSearch() {
+        if (isFullText.value) {
+            _lastFtsQuery.value = _searchQuery.value
+        }
     }
 
     fun clearHistory() {

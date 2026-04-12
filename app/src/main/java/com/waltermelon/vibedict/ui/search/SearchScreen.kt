@@ -64,6 +64,7 @@ fun SearchScreen(
     val isRegexEnabled by viewModel.isRegexEnabled.collectAsState()
     val isFullText by viewModel.isFullText.collectAsState()
     val useWildcard by viewModel.useWildcard.collectAsState()
+    val lastFtsQuery by viewModel.lastFtsQuery.collectAsState()
     
     val coroutineScope = rememberCoroutineScope()
 
@@ -133,10 +134,7 @@ fun SearchScreen(
                     TextField(
                         value = searchQuery,
                         onValueChange = { 
-                            // Block input ONLY if searching AND full-text
-                            if (!(isSearching && isFullText)) {
-                                viewModel.onSearchQueryChanged(it)
-                            }
+                            viewModel.onSearchQueryChanged(it)
                         },
                         enabled = true, // Always "enabled" to keep focus/keyboard, but we block changes manually above
                         modifier = Modifier
@@ -153,6 +151,16 @@ fun SearchScreen(
                                 Icon(Icons.Outlined.ArrowDownward, stringResource(R.string.go_back))
                             }
                         },
+                        trailingIcon = {
+                            if (isFullText && searchQuery.isNotEmpty() && searchQuery != lastFtsQuery && !isSearching) {
+                                IconButton(onClick = { 
+                                    keyboardController?.hide()
+                                    viewModel.triggerFullTextSearch() 
+                                }) {
+                                    Icon(Icons.Filled.Check, contentDescription = stringResource(R.string.search))
+                                }
+                            }
+                        },
                         colors = TextFieldDefaults.colors(
                             focusedIndicatorColor = Color.Transparent,
                             unfocusedIndicatorColor = Color.Transparent,
@@ -162,9 +170,17 @@ fun SearchScreen(
                             disabledContainerColor = Color.Transparent
                         ),
                         singleLine = true,
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                        keyboardOptions = KeyboardOptions(imeAction = if (isFullText && searchQuery != lastFtsQuery) ImeAction.Search else ImeAction.Go),
                         keyboardActions = KeyboardActions(
-                            onSearch = { onSearch(searchQuery) }
+                            onSearch = { 
+                                if (isFullText && searchQuery != lastFtsQuery) {
+                                    keyboardController?.hide()
+                                    viewModel.triggerFullTextSearch()
+                                } else {
+                                    onSearch(searchQuery) 
+                                }
+                            },
+                            onGo = { onSearch(searchQuery) }
                         )
                     )
 
@@ -312,12 +328,17 @@ fun SearchScreen(
         } else {
             if (searchResults.isEmpty() && !isSearching) {
                 Box(modifier = listModifier, contentAlignment = Alignment.Center) {
-                    Text(stringResource(R.string.no_def_found_collection))
+                    if (isFullText && searchQuery != lastFtsQuery) {
+                        Text(stringResource(R.string.click_tick_to_search_fts))
+                    } else {
+                        Text(stringResource(R.string.no_def_found_collection))
+                    }
                 }
             } else {
                 SuggestionList(
                     suggestions = searchResults,
                     modifier = listModifier,
+                    isFullText = isFullText,
                     onSearch = onSearch
                 )
             }
@@ -355,6 +376,7 @@ fun SearchHistoryList(
 fun SuggestionList(
     suggestions: List<MergedSearchResult>, // <-- CHANGED
     modifier: Modifier = Modifier,
+    isFullText: Boolean = false,
     onSearch: (String) -> Unit
 ) {
     LazyColumn(
@@ -372,7 +394,7 @@ fun SuggestionList(
                 Column(modifier = Modifier.weight(1f)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(suggestion.word, style = MaterialTheme.typography.titleLarge)
-                        if (suggestion.hitCount > 0) {
+                        if (isFullText && suggestion.hitCount > 0) {
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 text = "(${suggestion.hitCount})",
