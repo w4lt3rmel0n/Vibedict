@@ -59,6 +59,22 @@ android {
     }
     ndkVersion = "27.0.12077973"
     buildToolsVersion = "36.1.0"
+
+    applicationVariants.all {
+        val variant = this
+        variant.outputs.all {
+            val output = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
+            val appName = "Vibedict"
+
+            val abiFilter = output.filters.find { it.filterType == com.android.build.OutputFile.ABI }?.identifier
+
+            if (abiFilter != null) {
+                output.outputFileName = "$appName-$abiFilter.apk"
+            } else {
+                output.outputFileName = "$appName.apk"
+            }
+        }
+    }
 }
 
 kotlin {

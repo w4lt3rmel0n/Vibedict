@@ -260,8 +260,7 @@ private fun DictionaryRow(
         subtitle = null,
         onClick = if (!isManageMode) {
             {
-                val encodedId = URLEncoder.encode(dict.id, StandardCharsets.UTF_8.toString())
-                navController.safeNavigate(Screen.createDictionaryDetailRoute(encodedId))
+                navController.safeNavigate(Screen.createDictionaryDetailRoute(dict.id))
             }
         } else null,
         trailingContent = if (!isManageMode) {

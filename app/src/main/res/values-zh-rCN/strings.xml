@@ -26,6 +26,7 @@
     <string name="clear_all">清除所有</string>
     <string name="no_history">暂无查询记录。</string>
     <string name="no_def_found_collection">在选定的集合中未找到该定义。</string>
+    <string name="click_tick_to_search_fts">点勾确认后开始全文搜索。</string>
 
     <string name="no_bookmarks">您还没有收藏任何单词。</string>
     <string name="remove_bookmark">移除书签</string>

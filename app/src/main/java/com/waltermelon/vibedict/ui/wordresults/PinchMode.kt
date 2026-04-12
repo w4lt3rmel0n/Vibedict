@@ -41,14 +41,16 @@ object WebViewModeRenderer {
 
         val entriesHtml = entries.mapIndexed { index, entry ->
             val isExpanded = expandedStates[entry.dictionaryName] ?: entry.isExpandedByDefault
-            val selectedIndex = selectedIndices[entry.id] ?: 0
             val customFontPaths = fontPathsMap[entry.id] ?: entry.customFontPaths
 
-            val contentToShow = if (entry.entries.isNotEmpty()) {
-                entry.entries.getOrElse(selectedIndex) { entry.entries[0] }
+            // Join all entries with <hr> dividers so they are all visible at once
+            val contentToShow = if (entry.entries.size > 1) {
+                entry.entries.joinToString("<hr style='border: none; border-top: 1px solid #ccc; margin: 16px 0;'>")
+            } else if (entry.entries.isNotEmpty()) {
+                entry.entries[0]
             } else ""
 
-            Log.d("WebViewModeRenderer", "Rendering entry: ${entry.dictionaryName}, Content length: ${contentToShow.length}, Sample: ${contentToShow.take(200).replace("\n", " ")}")
+            Log.d("WebViewModeRenderer", "Rendering entry: ${entry.dictionaryName}, Entries: ${entry.entries.size}, Content length: ${contentToShow.length}")
 
             generateEntrySection(
                 entry = entry,
@@ -58,7 +60,6 @@ object WebViewModeRenderer {
                 isDarkTheme = isDarkTheme,
                 forceOriginalStyle = entry.forceOriginalStyle,
                 entryIndex = index,
-                selectedIndex = selectedIndex,
                 themeColors = themeColors
             )
         }.joinToString("\n")
@@ -348,21 +349,12 @@ object WebViewModeRenderer {
         isDarkTheme: Boolean,
         forceOriginalStyle: Boolean,
         entryIndex: Int,
-        selectedIndex: Int,
         themeColors: ThemeColors
     ): String {
         val entryId = entry.id.hashCode().toString()
         val expandedClass = if (isExpanded) "expanded" else "collapsed"
         val sectionCollapsedClass = if (!isExpanded) "section-collapsed" else ""
         val iconExpandedClass = if (isExpanded) "expanded" else ""
-
-        val pillsHtml = if (entry.entries.size > 1 && isExpanded) {
-            val pills = entry.entries.mapIndexed { index, _ ->
-                val selectedClass = if (index == selectedIndex) "selected" else ""
-                """<span class="entry-pill $selectedClass" onclick="selectEntry('${entry.id}', $index)">Entry ${index + 1}</span>"""
-            }.joinToString("\n")
-            """<div id="pills-$entryId" class="entry-pills">$pills</div>"""
-        } else ""
 
         val iframeContent = generateIframeContent(
             content = content,
@@ -387,7 +379,6 @@ object WebViewModeRenderer {
                 <span class="entry-title">${escapeHtml(entry.dictionaryName)}</span>
                 $expandIconSvg
             </div>
-            $pillsHtml
             <div id="body-$entryId" class="entry-body $expandedClass">
                 $loadingHtml
                 ${if (!entry.isLoading) {
@@ -507,6 +498,17 @@ object WebViewModeRenderer {
             parent.postMessage({type: 'iframeSelection', text: text}, '*');
         });
         
+        window.addEventListener('message', function(e) {
+            if (e.data && e.data.type === 'scrollTo') {
+                var hashId = e.data.hash;
+                var el = document.getElementById(hashId) || document.getElementsByName(hashId)[0];
+                if (!el) {
+                    try { el = document.querySelector('[id="' + hashId.replace(/"/g, '\\"') + '"]'); } catch(err) {}
+                }
+                if (el) el.scrollIntoView();
+            }
+        });
+        
         // Track link clicks for debugging redirection
         document.addEventListener('click', function(e) {
             var target = e.target.closest('a');
@@ -533,6 +535,17 @@ object WebViewModeRenderer {
                     if (clickedUrl.startsWith('entry://')) {
                         var word = clickedUrl.substring(8);
                         try { word = decodeURIComponent(word); } catch(err) {}
+                        
+                        if (word.startsWith('#')) {
+                            var hashId = word.substring(1);
+                            var el = document.getElementById(hashId) || document.getElementsByName(hashId)[0];
+                            if (!el) {
+                                try { el = document.querySelector('[id="' + hashId.replace(/"/g, '\\"') + '"]'); } catch(e) {}
+                            }
+                            if (el) el.scrollIntoView();
+                            return;
+                        }
+                        
                         finalUrl = 'entry://' + encodeURIComponent(word).replace(/['()~*!]/g, function(c) {
                             return '%' + c.charCodeAt(0).toString(16).toUpperCase();
                         });
